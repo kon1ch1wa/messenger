@@ -1,0 +1,12 @@
+spring:
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://db:5432/messenger_db
+    username: admin
+    password: admin
+  liquibase:
+    change-log: classpath:migrations/changelog-master.xml
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://db:5432/messenger_db
+    user: admin
+    password: admin
