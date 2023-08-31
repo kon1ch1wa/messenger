@@ -15,10 +15,13 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.shaded.com.fasterxml.jackson.core.JsonProcessingException;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 import ru.shutoff.messenger.dto.UserPrimaryInfoDTO;
+import ru.shutoff.messenger.model.User;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import java.util.UUID;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @Testcontainers
 @SpringBootTest(classes = MessengerApplication.class)
@@ -43,6 +46,10 @@ class MessengerApplicationTests {
 	@Autowired
 	private MockMvc mockMvc;
 
+	private static final String EMAIL = "spring.email.receiver.daemon@gmail.com";
+	private static final String LOGIN = "test_login";
+	private static final String PASS = "test_pass";
+
 	private String wrapUser(String email, String login, String password) throws JsonProcessingException {
 		UserPrimaryInfoDTO info = new UserPrimaryInfoDTO(email, login, password);
 		return new ObjectMapper().writeValueAsString(info);
@@ -56,15 +63,37 @@ class MessengerApplicationTests {
 	@Test
 	@Transactional
 	void registerUserTest() throws Exception {
-		String json = wrapUser("yaroslav@shutoff.ru", "login", "password");
-		mockMvc.perform(post("/user/register").contentType(MediaType.APPLICATION_JSON).content(json))
-				.andExpect(status().isOk());
+		String json = wrapUser(EMAIL, LOGIN, PASS);
+		String content = mockMvc.perform(post("/user/register").contentType(MediaType.APPLICATION_JSON).content(json))
+				.andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+		User user = new ObjectMapper().readValue(content, User.class);
+		assertEquals(user.getEmail(), EMAIL);
+		assertEquals(user.getLogin(), LOGIN);
+		assertEquals(user.getPassword(), PASS);
+		assertFalse(user.isActivated());
+	}
+
+	@Test
+	@Transactional
+	void registerUserWithActivationTest() throws Exception {
+		String json = wrapUser(EMAIL, LOGIN, PASS);
+		String content = mockMvc.perform(post("/user/register").contentType(MediaType.APPLICATION_JSON).content(json))
+				.andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+		User user = new ObjectMapper().readValue(content, User.class);
+		String token = user.getToken();
+		assertNotNull(token);
+		mockMvc.perform(get("/user/endRegistration").param("token", UUID.randomUUID().toString()))
+				.andExpect(status().isBadRequest());
+		content = mockMvc.perform(get("/user/endRegistration").param("token", token))
+				.andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+		user = new ObjectMapper().readValue(content, User.class);
+		assertTrue(user.isActivated());
 	}
 
 	@Test
 	@Transactional
 	void registerSameUserTest() throws Exception {
-		String json = wrapUser("doomer2000t@gmail.com", "login", "password");
+		String json = wrapUser(EMAIL, LOGIN, PASS);
 		mockMvc.perform(post("/user/register").contentType(MediaType.APPLICATION_JSON).content(json))
 				.andExpect(status().isOk());
 		mockMvc.perform(post("/user/register").contentType(MediaType.APPLICATION_JSON).content(json))

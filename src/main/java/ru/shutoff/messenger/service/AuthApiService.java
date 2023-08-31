@@ -16,21 +16,41 @@ public class AuthApiService {
 	private final UserInfoRepo userInfoRepo;
 	private final MailSender mailSender;
 
-	public void register(String email, String login, String password) {
+	private static final String MESSAGE_MAIL = """
+			Please follow this link to verify your email and end registration on MessengerApp
+			http://localhost:8080/user/endRegistration?token=%s
+			Do not answer on this message""";
+
+	public User register(String email, String login, String password) {
+		String token = UUID.randomUUID().toString();
 		User user = new User().builder()
 				.id(UUID.randomUUID())
 				.email(email)
 				.login(login)
 				.password(password)
+				.isActivated(false)
+				.token(token)
 				.build();
 		userInfoRepo.save(user);
+		userInfoRepo.addToken(user.getId(), token);
 		try {
 			SimpleMailMessage message = new SimpleMailMessage();
-			message.setText("Please, confirm that you are not a robot by entering this link.");
+			message.setSubject("Confirmation Email on MessengerApp");
+			message.setText(String.format(MESSAGE_MAIL, token));
+			message.setFrom("sender.email@daemon.org");
 			message.setTo(email);
 			mailSender.send(message);
 		} catch (Exception e) {
 			System.out.println(e.getMessage());
 		}
+		return user;
+	}
+
+	public User endRegistration(String token) {
+		User user = userInfoRepo.getByToken(token);
+		user.setToken(null);
+		user.setActivated(true);
+		userInfoRepo.deleteToken(token);
+		return user;
 	}
 }
