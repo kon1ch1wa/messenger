@@ -56,7 +56,7 @@ class MessengerApplicationTests {
 	@Test
 	@Transactional
 	void registerUserTest() throws Exception {
-		String json = wrapUser("email@inbox.org", "login", "password");
+		String json = wrapUser("yaroslav@shutoff.ru", "login", "password");
 		mockMvc.perform(post("/user/register").contentType(MediaType.APPLICATION_JSON).content(json))
 				.andExpect(status().isOk());
 	}
@@ -64,7 +64,7 @@ class MessengerApplicationTests {
 	@Test
 	@Transactional
 	void registerSameUserTest() throws Exception {
-		String json = wrapUser("email@inbox.org", "login", "password");
+		String json = wrapUser("doomer2000t@gmail.com", "login", "password");
 		mockMvc.perform(post("/user/register").contentType(MediaType.APPLICATION_JSON).content(json))
 				.andExpect(status().isOk());
 		mockMvc.perform(post("/user/register").contentType(MediaType.APPLICATION_JSON).content(json))

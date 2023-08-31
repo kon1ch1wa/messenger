@@ -10,3 +10,12 @@ spring:
     url: jdbc:postgresql://db:5432/messenger_db
     user: admin
     password: admin
+  mail:
+    host: smtp.gmail.com
+    username: spring.email.sender.daemon@gmail.com
+    password: dcwnxeciuqiyzvam
+    protocol: smtp
+    port: 587
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
