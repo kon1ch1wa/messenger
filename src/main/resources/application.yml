@@ -19,3 +19,10 @@ spring:
     properties:
       mail.smtp.auth: true
       mail.smtp.starttls.enable: true
+  session:
+    store-type: jdbc
+    jdbc:
+      initialize-schema: always
+jwt:
+  secret: -=very=top=secret=key=for=messenger=app=to=jwt=secret=property=-
+  expiration_time: 18000000

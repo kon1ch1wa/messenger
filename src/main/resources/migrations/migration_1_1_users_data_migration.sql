@@ -10,8 +10,8 @@ CREATE TABLE users_data
     password varchar(257) NOT NULL,
     is_activated boolean,
     description varchar(1000),
-    phone_number varchar(11) UNIQUE,
-    url_tag varchar(20),
+    phone_number varchar(17) UNIQUE,
+    url_tag varchar(20) UNIQUE,
     token varchar(100) UNIQUE
 );
 
