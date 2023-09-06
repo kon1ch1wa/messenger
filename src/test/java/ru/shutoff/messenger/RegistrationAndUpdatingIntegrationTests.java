@@ -47,6 +47,8 @@ class RegistrationAndUpdatingIntegrationTests {
 
 	@Autowired
 	private MockMvc mockMvc;
+	
+	private static final ObjectMapper mapper = new ObjectMapper();
 
 	@Test
 	void runningContainerTest() {
@@ -57,9 +59,9 @@ class RegistrationAndUpdatingIntegrationTests {
 	@Transactional
 	void registerUserTest() throws Exception {
 		String json = SetupMethods.wrapPrimaryInfo();
-		String content = mockMvc.perform(post("/authApi/user").contentType(MediaType.APPLICATION_JSON).content(json))
+		String content = mockMvc.perform(post(SetupMethods.POST_USER_URL).contentType(MediaType.APPLICATION_JSON).content(json))
 				.andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-		User user = new ObjectMapper().readValue(content, User.class);
+		User user = mapper.readValue(content, User.class);
 		assertEquals(user.getEmail(), SetupMethods.EMAIL);
 		assertEquals(user.getLogin(), SetupMethods.LOGIN);
 		assertFalse(user.isActivated());
@@ -69,16 +71,16 @@ class RegistrationAndUpdatingIntegrationTests {
 	@Transactional
 	void registerUserWithActivationTest() throws Exception {
 		String json = SetupMethods.wrapPrimaryInfo();
-		String content = mockMvc.perform(post("/authApi/user").contentType(MediaType.APPLICATION_JSON).content(json))
+		String content = mockMvc.perform(post(SetupMethods.POST_USER_URL).contentType(MediaType.APPLICATION_JSON).content(json))
 				.andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-		User user = new ObjectMapper().readValue(content, User.class);
+		User user = mapper.readValue(content, User.class);
 		String token = user.getToken();
 		assertNotNull(token);
-		mockMvc.perform(get("/authApi/user").param("token", UUID.randomUUID().toString()))
+		mockMvc.perform(get(SetupMethods.GET_USER_URL).param("token", UUID.randomUUID().toString()))
 				.andExpect(status().isBadRequest());
-		content = mockMvc.perform(get("/authApi/user").param("token", token))
+		content = mockMvc.perform(get(SetupMethods.GET_USER_URL).param("token", token))
 				.andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-		user = new ObjectMapper().readValue(content, User.class);
+		user = mapper.readValue(content, User.class);
 		assertTrue(user.isActivated());
 	}
 
@@ -86,9 +88,9 @@ class RegistrationAndUpdatingIntegrationTests {
 	@Transactional
 	void registerSameUserTest() throws Exception {
 		String json = SetupMethods.wrapPrimaryInfo();
-		mockMvc.perform(post("/authApi/user").contentType(MediaType.APPLICATION_JSON).content(json))
+		mockMvc.perform(post(SetupMethods.POST_USER_URL).contentType(MediaType.APPLICATION_JSON).content(json))
 				.andExpect(status().isOk());
-		mockMvc.perform(post("/authApi/user").contentType(MediaType.APPLICATION_JSON).content(json))
+		mockMvc.perform(post(SetupMethods.POST_USER_URL).contentType(MediaType.APPLICATION_JSON).content(json))
 				.andExpect(status().isBadRequest());
 	}
 
@@ -96,10 +98,10 @@ class RegistrationAndUpdatingIntegrationTests {
 	@Transactional
 	void updateUserUnauthorizedTest() throws Exception {
 		String jsonPrimary = SetupMethods.wrapPrimaryInfo();
-		mockMvc.perform(post("/authApi/user").contentType(MediaType.APPLICATION_JSON).content(jsonPrimary))
+		mockMvc.perform(post(SetupMethods.POST_USER_URL).contentType(MediaType.APPLICATION_JSON).content(jsonPrimary))
 				.andExpect(status().isOk());
 		String jsonSecondary = SetupMethods.wrapSecondaryInfo();
-		mockMvc.perform(patch("/authApi/user").contentType(MediaType.APPLICATION_JSON).content(jsonSecondary))
+		mockMvc.perform(patch(SetupMethods.PATCH_USER_URL).contentType(MediaType.APPLICATION_JSON).content(jsonSecondary))
 				.andExpect(status().isUnauthorized());
 	}
 
@@ -111,29 +113,29 @@ class RegistrationAndUpdatingIntegrationTests {
 		Cookie cookie = SetupMethods.registerUser(mockMvc);
 
 		String jsonSecondary_d = SetupMethods.wrapSecondaryInfo(SetupMethods.DESC, null, null);
-		response = mockMvc.perform(patch("/authApi/user").contentType(MediaType.APPLICATION_JSON).content(jsonSecondary_d).cookie(cookie))
+		response = mockMvc.perform(patch(SetupMethods.PATCH_USER_URL).contentType(MediaType.APPLICATION_JSON).content(jsonSecondary_d).cookie(cookie))
 				.andExpect(status().isOk()).andReturn().getResponse();
-		user = new ObjectMapper().readValue(response.getContentAsString(), User.class);
+		user = mapper.readValue(response.getContentAsString(), User.class);
 		assertEquals(user.getDescription(), SetupMethods.DESC);
 		assertNull(user.getPhoneNumber());
 		assertNull(user.getUrlTag());
 
 		String jsonSecondary_p = SetupMethods.wrapSecondaryInfo(null, SetupMethods.PHONE_NUMBER, null);
-		response = mockMvc.perform(patch("/authApi/user").contentType(MediaType.APPLICATION_JSON).content(jsonSecondary_p).cookie(response.getCookie("JwtToken")))
+		response = mockMvc.perform(patch(SetupMethods.PATCH_USER_URL).contentType(MediaType.APPLICATION_JSON).content(jsonSecondary_p).cookie(response.getCookie(SetupMethods.JWT_COOKIE_NAME)))
 				.andExpect(status().isOk()).andReturn().getResponse();
-		user = new ObjectMapper().readValue(response.getContentAsString(), User.class);
+		user = mapper.readValue(response.getContentAsString(), User.class);
 		assertEquals(user.getDescription(), SetupMethods.DESC);
 		assertEquals(user.getPhoneNumber(), SetupMethods.PHONE_NUMBER);
 		assertNull(user.getUrlTag());
 
 		String jsonSecondary_u = SetupMethods.wrapSecondaryInfo(null, null, SetupMethods.URL_TAG);
-		response = mockMvc.perform(patch("/authApi/user").contentType(MediaType.APPLICATION_JSON).content(jsonSecondary_u).cookie(response.getCookie("JwtToken")))
+		response = mockMvc.perform(patch(SetupMethods.PATCH_USER_URL).contentType(MediaType.APPLICATION_JSON).content(jsonSecondary_u).cookie(response.getCookie(SetupMethods.JWT_COOKIE_NAME)))
 				.andExpect(status().isOk()).andReturn().getResponse();
-		user = new ObjectMapper().readValue(response.getContentAsString(), User.class);
+		user = mapper.readValue(response.getContentAsString(), User.class);
 		assertEquals(user.getDescription(), SetupMethods.DESC);
 		assertEquals(user.getPhoneNumber(), SetupMethods.PHONE_NUMBER);
 		assertEquals(user.getUrlTag(), SetupMethods.URL_TAG);
-		assertNotNull(response.getCookie("JwtToken"));
+		assertNotNull(response.getCookie(SetupMethods.JWT_COOKIE_NAME));
 	}
 
 	//@Test

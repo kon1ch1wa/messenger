@@ -33,16 +33,14 @@ public class AuthApiService {
 	private final AuthenticationManager authenticationManager;
 	private final PasswordEncoder passwordEncoder;
 
-	private final UserDetailsService userDetailsService;
-
 	private static final String MESSAGE_MAIL = """
 			Please follow this link to verify your email and end registration on MessengerApp
-			http://localhost:8080/user/endRegistration?token=%s
+			http://localhost:8080/authApi/user?token=%s
 			Do not answer on this message""";
 
 	public User register(String email, String login, String password) {
 		String token = UUID.randomUUID().toString();
-		User user = new User().builder()
+		User user = User.builder()
 				.id(UUID.randomUUID())
 				.email(email)
 				.login(login)
@@ -50,14 +48,13 @@ public class AuthApiService {
 				.isActivated(false)
 				.token(token)
 				.build();
-		userInfoRepo.primarySave(user);
-		userInfoRepo.addToken(user.getId(), token);
+		userInfoRepo.save(user);
 		try {
 			SimpleMailMessage message = new SimpleMailMessage();
+			message.setTo(email);
+			message.setFrom("sender.email@daemon.org");
 			message.setSubject("Confirmation Email on MessengerApp");
 			message.setText(String.format(MESSAGE_MAIL, token));
-			message.setFrom("sender.email@daemon.org");
-			message.setTo(email);
 			mailSender.send(message);
 		} catch (Exception e) {
 			System.out.println(e.getMessage());
@@ -69,8 +66,6 @@ public class AuthApiService {
 		User user = userInfoRepo.getPrimary(token);
 		user.setToken(null);
 		user.setActivated(true);
-		userInfoRepo.update(user);
-		userInfoRepo.deleteToken(token);
 		String userPassword = user.getPassword();
 		user.setPassword(passwordEncoder.encode(userPassword));
 		userInfoRepo.update(user);
@@ -124,11 +119,6 @@ public class AuthApiService {
 	/*
 	TODO Написать валидацию для данных, которые поступают на вход
 	TODO Исключения, если значение поля, которое должно быть уникальным уже существует или валидация не прошла
-	TODO Перепривязка почтового ящика только при доступе к текущему ящику
-	TODO Обновление пароля только при доступе к текущему паролю
-	TODO Забыли логин
-	TODO Забыли пароль
-	TODO Покрыть тестами
 	TODO ПРИКРУТИТЬ REDIS, RABBITMQ
 	TODO ЧАТ + РАЗОБРАТЬСЯ С WEBSOCKET
 	*/

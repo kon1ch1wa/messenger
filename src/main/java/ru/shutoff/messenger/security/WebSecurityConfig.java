@@ -49,6 +49,7 @@ public class WebSecurityConfig {
 								.requestMatchers(HttpMethod.GET, "/ping").authenticated()
 								.requestMatchers(HttpMethod.PATCH, "/authApi/user").authenticated()
 								.requestMatchers(HttpMethod.GET, "/authApi/logout").authenticated()
+								.requestMatchers(HttpMethod.PATCH, "/updateCredsApi/restorePassword").authenticated()
 								.anyRequest().permitAll()
 				)
 				.authenticationProvider(authenticationProvider())

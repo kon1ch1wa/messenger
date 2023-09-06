@@ -48,6 +48,8 @@ public class JwtTokenIntegrationTests {
 
 	@Autowired
 	private MockMvc mockMvc;
+	
+	private static final ObjectMapper mapper = new ObjectMapper();
 
 	@Test
 	void runningContainerTest() {
@@ -57,8 +59,8 @@ public class JwtTokenIntegrationTests {
 	@Test
 	@Transactional
 	void pingUnauthorizedNotCreatingCookieTest() throws Exception {
-		Optional<Cookie> cookie = Optional.ofNullable(mockMvc.perform(get("/ping"))
-				.andExpect(status().isUnauthorized()).andReturn().getResponse().getCookie("SESSION"));
+		Optional<Cookie> cookie = Optional.ofNullable(mockMvc.perform(get(SetupMethods.GET_PING_URL))
+				.andExpect(status().isUnauthorized()).andReturn().getResponse().getCookie(SetupMethods.JWT_COOKIE_NAME));
 		assertFalse(cookie.isPresent());
 	}
 
@@ -66,18 +68,18 @@ public class JwtTokenIntegrationTests {
 	@Transactional
 	void pingAuthorizedCookieTest() throws Exception {
 		Cookie cookie = SetupMethods.registerUser(mockMvc);
-		mockMvc.perform(get("/ping").cookie(cookie)).andExpect(status().isOk());
+		mockMvc.perform(get(SetupMethods.GET_PING_URL).cookie(cookie)).andExpect(status().isOk());
 	}
 
 	@Test
 	@Transactional
 	void pingUpdatingCookieTest() throws Exception {
-		mockMvc.perform(get("/ping")).andExpect(status().isUnauthorized());
+		mockMvc.perform(get(SetupMethods.GET_PING_URL)).andExpect(status().isUnauthorized());
 		Cookie cookie = SetupMethods.registerUser(mockMvc);
-		Optional<Cookie> cookieNew = Optional.ofNullable(mockMvc.perform(get("/ping").cookie(cookie))
-				.andExpect(status().isOk()).andReturn().getResponse().getCookie("JwtToken"));
+		Optional<Cookie> cookieNew = Optional.ofNullable(mockMvc.perform(get(SetupMethods.GET_PING_URL).cookie(cookie))
+				.andExpect(status().isOk()).andReturn().getResponse().getCookie(SetupMethods.JWT_COOKIE_NAME));
 		assertTrue(cookieNew.isPresent());
-		mockMvc.perform(get("/ping").cookie(cookieNew.get())).andExpect(status().isOk());
+		mockMvc.perform(get(SetupMethods.GET_PING_URL).cookie(cookieNew.get())).andExpect(status().isOk());
 	}
 
 	@Test
@@ -85,54 +87,54 @@ public class JwtTokenIntegrationTests {
 	void pingUpdatingCookieLifecycleTest() throws Exception {
 		Cookie cookie = SetupMethods.registerUser(mockMvc);
 
-		cookie = mockMvc.perform(get("/ping").cookie(cookie))
-				.andExpect(status().isOk()).andReturn().getResponse().getCookie("JwtToken");
+		cookie = mockMvc.perform(get(SetupMethods.GET_PING_URL).cookie(cookie))
+				.andExpect(status().isOk()).andReturn().getResponse().getCookie(SetupMethods.JWT_COOKIE_NAME);
 		Thread.sleep(TimeUnit.SECONDS.toMillis(1));
-		cookie = mockMvc.perform(get("/ping").cookie(cookie))
-				.andExpect(status().isOk()).andReturn().getResponse().getCookie("JwtToken");
+		cookie = mockMvc.perform(get(SetupMethods.GET_PING_URL).cookie(cookie))
+				.andExpect(status().isOk()).andReturn().getResponse().getCookie(SetupMethods.JWT_COOKIE_NAME);
 		Thread.sleep(TimeUnit.SECONDS.toMillis(2));
-		mockMvc.perform(get("/ping")).andExpect(status().isUnauthorized());
+		mockMvc.perform(get(SetupMethods.GET_PING_URL)).andExpect(status().isUnauthorized());
 	}
 
 	@Test
 	@Transactional
 	void loginTest() throws Exception {
-		mockMvc.perform(get("/authApi/logout")).andExpect(status().isUnauthorized());
+		mockMvc.perform(get(SetupMethods.GET_LOGOUT_URL)).andExpect(status().isUnauthorized());
 		Cookie cookie = SetupMethods.registerUser(mockMvc);
 
-		cookie = mockMvc.perform(get("/ping").cookie(cookie))
-				.andExpect(status().isOk()).andReturn().getResponse().getCookie("JwtToken");
-		cookie = mockMvc.perform(get("/authApi/logout").cookie(cookie))
-				.andExpect(status().isOk()).andReturn().getResponse().getCookie("JwtToken");
-		mockMvc.perform(get("/ping")).andExpect(status().isUnauthorized());
+		cookie = mockMvc.perform(get(SetupMethods.GET_PING_URL).cookie(cookie))
+				.andExpect(status().isOk()).andReturn().getResponse().getCookie(SetupMethods.JWT_COOKIE_NAME);
+		cookie = mockMvc.perform(get(SetupMethods.GET_LOGOUT_URL).cookie(cookie))
+				.andExpect(status().isOk()).andReturn().getResponse().getCookie(SetupMethods.JWT_COOKIE_NAME);
+		mockMvc.perform(get(SetupMethods.GET_PING_URL)).andExpect(status().isUnauthorized());
 
-		String authJson = new ObjectMapper().writeValueAsString(new LoginRequest(SetupMethods.LOGIN, SetupMethods.PASS));
-		Cookie authCookie = mockMvc.perform(post("/authApi/login").contentType(MediaType.APPLICATION_JSON).content(authJson))
-				.andExpect(status().isOk()).andReturn().getResponse().getCookie("JwtToken");
-		authCookie = mockMvc.perform(get("/ping").cookie(authCookie))
-				.andExpect(status().isOk()).andReturn().getResponse().getCookie("JwtToken");
-		mockMvc.perform(get("/authApi/logout").cookie(authCookie)).andExpect(status().isOk());
+		String authJson = mapper.writeValueAsString(new LoginRequest(SetupMethods.LOGIN, SetupMethods.PASS));
+		Cookie authCookie = mockMvc.perform(post(SetupMethods.POST_LOGIN_URL).contentType(MediaType.APPLICATION_JSON).content(authJson))
+				.andExpect(status().isOk()).andReturn().getResponse().getCookie(SetupMethods.JWT_COOKIE_NAME);
+		authCookie = mockMvc.perform(get(SetupMethods.GET_PING_URL).cookie(authCookie))
+				.andExpect(status().isOk()).andReturn().getResponse().getCookie(SetupMethods.JWT_COOKIE_NAME);
+		mockMvc.perform(get(SetupMethods.GET_LOGOUT_URL).cookie(authCookie)).andExpect(status().isOk());
 
-		Optional<Cookie> authCookieNew = Optional.ofNullable(mockMvc.perform(post("/authApi/login"))
-				.andExpect(status().isBadRequest()).andReturn().getResponse().getCookie("JwtToken"));
+		Optional<Cookie> authCookieNew = Optional.ofNullable(mockMvc.perform(post(SetupMethods.POST_LOGIN_URL))
+				.andExpect(status().isBadRequest()).andReturn().getResponse().getCookie(SetupMethods.JWT_COOKIE_NAME));
 		assertFalse(authCookieNew.isPresent());
-		String authJson1 = new ObjectMapper().writeValueAsString(new LoginRequest(SetupMethods.LOGIN, "Wrong_password"));
-		mockMvc.perform(post("/authApi/login").contentType(MediaType.APPLICATION_JSON).content(authJson1))
+		String authJson1 = mapper.writeValueAsString(new LoginRequest(SetupMethods.LOGIN, "Wrong_password"));
+		mockMvc.perform(post(SetupMethods.POST_LOGIN_URL).contentType(MediaType.APPLICATION_JSON).content(authJson1))
 				.andExpect(status().isUnauthorized());
-		String authJson2 = new ObjectMapper().writeValueAsString(new LoginRequest("Non_existed_login", SetupMethods.PASS));
-		mockMvc.perform(post("/authApi/login").contentType(MediaType.APPLICATION_JSON).content(authJson2))
+		String authJson2 = mapper.writeValueAsString(new LoginRequest("Non_existed_login", SetupMethods.PASS));
+		mockMvc.perform(post(SetupMethods.POST_LOGIN_URL).contentType(MediaType.APPLICATION_JSON).content(authJson2))
 				.andExpect(status().isUnauthorized());
 	}
 
 	@Test
 	@Transactional
 	void logoutTest() throws Exception {
-		mockMvc.perform(get("/authApi/logout")).andExpect(status().isUnauthorized());
+		mockMvc.perform(get(SetupMethods.GET_LOGOUT_URL)).andExpect(status().isUnauthorized());
 		Cookie cookie = SetupMethods.registerUser(mockMvc);
-		cookie = mockMvc.perform(get("/ping").cookie(cookie))
-				.andExpect(status().isOk()).andReturn().getResponse().getCookie("JwtToken");
-		cookie = mockMvc.perform(get("/authApi/logout").cookie(cookie)).andExpect(status().isOk())
-				.andReturn().getResponse().getCookie("JwtToken");
-		mockMvc.perform(get("/ping")).andExpect(status().isUnauthorized());
+		cookie = mockMvc.perform(get(SetupMethods.GET_PING_URL).cookie(cookie))
+				.andExpect(status().isOk()).andReturn().getResponse().getCookie(SetupMethods.JWT_COOKIE_NAME);
+		cookie = mockMvc.perform(get(SetupMethods.GET_LOGOUT_URL).cookie(cookie)).andExpect(status().isOk())
+				.andReturn().getResponse().getCookie(SetupMethods.JWT_COOKIE_NAME);
+		mockMvc.perform(get(SetupMethods.GET_PING_URL)).andExpect(status().isUnauthorized());
 	}
 }

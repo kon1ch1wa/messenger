@@ -2,6 +2,7 @@ package ru.shutoff.messenger.controller;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import ru.shutoff.messenger.exception.DuplicateUserException;
@@ -20,6 +21,10 @@ public class BaseController {
 	}
 	@ExceptionHandler(NotAuthorizedException.class)
 	public ResponseEntity<String> handleNotAuthorizedException(NotAuthorizedException ex) {
-		return new ResponseEntity<String>(ex.getMessage(), HttpStatus.UNAUTHORIZED);
+		return new ResponseEntity<>(ex.getMessage(), HttpStatus.UNAUTHORIZED);
+	}
+	@ExceptionHandler(UsernameNotFoundException.class)
+	public ResponseEntity<String> handleNotFoundException(UsernameNotFoundException ex) {
+		return new ResponseEntity<>(ex.getMessage(), HttpStatus.NOT_FOUND);
 	}
 }

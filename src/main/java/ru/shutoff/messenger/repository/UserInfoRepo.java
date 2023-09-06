@@ -7,15 +7,14 @@ import java.util.UUID;
 
 @Repository
 public interface UserInfoRepo {
-	void primarySave(User user);
-	void addToken(UUID userId, String token);
+	void save(User user);
 	User getPrimary(String token);
-	void deleteToken(String token);
 	void update(User user);
 	void updateValueById(String type, String value, UUID userId);
 	void updateValueByEmail(String type, String value, String email);
 	void updateValueByLogin(String type, String value, String login);
 	String getLoginByEmail(String email);
+	String getEmailByLogin(String login);
 	User getById(UUID userId);
 	User getByEmail(String email);
 	User getByLogin(String login);

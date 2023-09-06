@@ -23,6 +23,9 @@ spring:
     store-type: jdbc
     jdbc:
       initialize-schema: always
+  jpa:
+    hibernate:
+      ddl-auto: update
 jwt:
   secret: -=very=top=secret=key=for=messenger=app=to=jwt=secret=property=-
   expiration_time: 18000000
