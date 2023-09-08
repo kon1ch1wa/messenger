@@ -2,6 +2,7 @@ package ru.shutoff.messenger.controller;
 
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import ru.shutoff.messenger.dto.RestorePasswordNoAccessDto;
@@ -18,12 +19,12 @@ public class UpdateCredsController {
 	private final JwtUtils jwtUtils;
 
 	@PostMapping("/restorePassword")
-	public User restorePasswordNoAccess(@RequestParam String key, @RequestBody RestorePasswordNoAccessDto dto) {
+	public User restorePasswordNoAccess(@RequestParam String key, @Valid @RequestBody RestorePasswordNoAccessDto dto) {
 		return service.restorePasswordThroughKey(key, dto.password(), dto.passwordConfirm());
 	}
 
 	@PatchMapping("/restorePassword")
-	public User restorePasswordWithAccess(@RequestBody RestorePasswordWithAccessDto dto, HttpServletRequest request) {
+	public User restorePasswordWithAccess(@Valid @RequestBody RestorePasswordWithAccessDto dto, HttpServletRequest request) {
 		Cookie jwtCookie = jwtUtils.getJwtCookieFromRequest(request);
 		return service.restorePasswordThroughJwt(jwtCookie, dto.newPassword(), dto.newPasswordConfirm(), dto.oldPassword());
 	}

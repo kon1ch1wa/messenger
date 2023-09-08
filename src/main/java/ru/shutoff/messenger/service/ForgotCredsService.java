@@ -44,6 +44,7 @@ public class ForgotCredsService {
 
 	private String encodeDataAndSendEmail(String data, String receiver, String text) {
 		String key = passwordEncoder.encode(data);
+		key = key.substring(7);
 		SimpleMailMessage message = new SimpleMailMessage();
 		message.setTo(receiver);
 		message.setFrom("sender.email@daemon.org");

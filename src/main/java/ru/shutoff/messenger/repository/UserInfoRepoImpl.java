@@ -63,8 +63,10 @@ public class UserInfoRepoImpl implements UserInfoRepo {
 	public void update(User user) {
 		try {
 			jdbcTemplate.update(SQL_UPDATE, user.getEmail(), user.getLogin(), user.getPassword(), user.isActivated(), user.getDescription(), user.getPhoneNumber(), user.getUrlTag(), user.getToken(), user.getId());
-		} catch (DataAccessException ex) {
+		} catch (DuplicateKeyException ex) {
 			throw new DuplicateUserException("Some data that should be unique is duplicated, please check.");
+		} catch (DataAccessException ex) {
+			throw new UsernameNotFoundException("No such user");
 		}
 	}
 
@@ -72,6 +74,8 @@ public class UserInfoRepoImpl implements UserInfoRepo {
 	public void updateValueById(String type, String value, UUID userId) {
 		try {
 			jdbcTemplate.update(String.format("update users_data set %s=? where id=?", type), value, userId);
+		} catch (DuplicateKeyException ex) {
+			throw new DuplicateUserException("Some data that should be unique is duplicated, please check.");
 		} catch (DataAccessException ex) {
 			throw new UsernameNotFoundException("No user with this id");
 		}
@@ -81,6 +85,8 @@ public class UserInfoRepoImpl implements UserInfoRepo {
 	public void updateValueByEmail(String type, String value, String email) {
 		try {
 			jdbcTemplate.update(String.format("update users_data set %s=? where email=?", type), value, email);
+		} catch (DuplicateKeyException ex) {
+			throw new DuplicateUserException("Some data that should be unique is duplicated, please check.");
 		} catch (DataAccessException ex) {
 			throw new UsernameNotFoundException("No user with this email");
 		}
@@ -90,6 +96,8 @@ public class UserInfoRepoImpl implements UserInfoRepo {
 	public void updateValueByLogin(String type, String value, String login) {
 		try {
 			jdbcTemplate.update(String.format("update users_data set %s=? where login=?", type), value, login);
+		} catch (DuplicateKeyException ex) {
+			throw new DuplicateUserException("Some data that should be unique is duplicated, please check.");
 		} catch (DataAccessException ex) {
 			throw new UsernameNotFoundException("No user with this login");
 		}

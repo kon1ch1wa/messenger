@@ -15,7 +15,6 @@ import java.util.ArrayList;
 @RequiredArgsConstructor
 public class UserDetailsServiceImpl implements UserDetailsService {
 	private final UserInfoRepo userInfoRepo;
-	private final PasswordEncoder passwordEncoder;
 	@Override
 	public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
 		User user = userInfoRepo.getByLogin(username);

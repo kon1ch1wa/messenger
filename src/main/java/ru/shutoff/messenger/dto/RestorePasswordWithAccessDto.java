@@ -2,14 +2,19 @@ package ru.shutoff.messenger.dto;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import jakarta.annotation.Nonnull;
+import jakarta.validation.constraints.NotNull;
+import ru.shutoff.messenger.validation.PasswordConstraint;
 
 @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
 public record RestorePasswordWithAccessDto (
-		@Nonnull
+		@NotNull
+		@PasswordConstraint
 		String oldPassword,
-		@Nonnull
+		@NotNull
+		@PasswordConstraint
 		String newPassword,
-		@Nonnull
+		@NotNull
+		@PasswordConstraint
 		String newPasswordConfirm
 ) {
 }
