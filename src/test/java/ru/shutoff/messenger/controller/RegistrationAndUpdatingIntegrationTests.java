@@ -75,8 +75,8 @@ class RegistrationAndUpdatingIntegrationTests {
 		String content = mockMvc.perform(post(SetupMethods.AUTH_API_USER_URL).contentType(MediaType.APPLICATION_JSON).content(json))
 				.andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 		User user = mapper.readValue(content, User.class);
-		assertEquals(user.getEmail(), SetupMethods.EMAIL);
-		assertEquals(user.getLogin(), SetupMethods.LOGIN);
+		assertEquals(SetupMethods.EMAIL, user.getEmail());
+		assertEquals(SetupMethods.LOGIN, user.getLogin());
 		assertFalse(user.isActivated());
 	}
 
@@ -129,7 +129,7 @@ class RegistrationAndUpdatingIntegrationTests {
 		response = mockMvc.perform(patch(SetupMethods.AUTH_API_USER_URL).contentType(MediaType.APPLICATION_JSON).content(jsonSecondary_d).cookie(cookie))
 				.andExpect(status().isOk()).andReturn().getResponse();
 		user = mapper.readValue(response.getContentAsString(), User.class);
-		assertEquals(user.getDescription(), SetupMethods.DESC);
+		assertEquals(SetupMethods.DESC, user.getDescription());
 		assertNull(user.getPhoneNumber());
 		assertNull(user.getUrlTag());
 
@@ -137,17 +137,17 @@ class RegistrationAndUpdatingIntegrationTests {
 		response = mockMvc.perform(patch(SetupMethods.AUTH_API_USER_URL).contentType(MediaType.APPLICATION_JSON).content(jsonSecondary_p).cookie(response.getCookie(SetupMethods.JWT_COOKIE_NAME)))
 				.andExpect(status().isOk()).andReturn().getResponse();
 		user = mapper.readValue(response.getContentAsString(), User.class);
-		assertEquals(user.getDescription(), SetupMethods.DESC);
-		assertEquals(user.getPhoneNumber(), SetupMethods.PHONE_NUMBER);
+		assertEquals(SetupMethods.DESC, user.getDescription());
+		assertEquals(SetupMethods.PHONE_NUMBER, user.getPhoneNumber());
 		assertNull(user.getUrlTag());
 
 		String jsonSecondary_u = SetupMethods.wrapSecondaryInfo(null, null, SetupMethods.URL_TAG);
 		response = mockMvc.perform(patch(SetupMethods.AUTH_API_USER_URL).contentType(MediaType.APPLICATION_JSON).content(jsonSecondary_u).cookie(response.getCookie(SetupMethods.JWT_COOKIE_NAME)))
 				.andExpect(status().isOk()).andReturn().getResponse();
 		user = mapper.readValue(response.getContentAsString(), User.class);
-		assertEquals(user.getDescription(), SetupMethods.DESC);
-		assertEquals(user.getPhoneNumber(), SetupMethods.PHONE_NUMBER);
-		assertEquals(user.getUrlTag(), SetupMethods.URL_TAG);
+		assertEquals(SetupMethods.DESC, user.getDescription());
+		assertEquals(SetupMethods.PHONE_NUMBER, user.getPhoneNumber());
+		assertEquals(SetupMethods.URL_TAG, user.getUrlTag());
 		assertNotNull(response.getCookie(SetupMethods.JWT_COOKIE_NAME));
 	}
 

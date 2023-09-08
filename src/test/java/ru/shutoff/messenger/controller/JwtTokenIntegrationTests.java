@@ -65,9 +65,9 @@ public class JwtTokenIntegrationTests {
 
 	@Test
 	void pingUnauthorizedNotCreatingCookieTest() throws Exception {
-		Optional<Cookie> cookie = Optional.ofNullable(mockMvc.perform(get(PING_URL))
-				.andExpect(status().isUnauthorized()).andReturn().getResponse().getCookie(JWT_COOKIE_NAME));
-		assertFalse(cookie.isPresent());
+		Cookie cookie = mockMvc.perform(get(PING_URL))
+				.andExpect(status().isUnauthorized()).andReturn().getResponse().getCookie(JWT_COOKIE_NAME);
+		assertNull(cookie);
 	}
 
 	@Test
@@ -80,10 +80,10 @@ public class JwtTokenIntegrationTests {
 	void pingUpdatingCookieTest() throws Exception {
 		mockMvc.perform(get(PING_URL)).andExpect(status().isUnauthorized());
 		Cookie cookie = registerUser(mockMvc);
-		Optional<Cookie> cookieNew = Optional.ofNullable(mockMvc.perform(get(PING_URL).cookie(cookie))
-				.andExpect(status().isOk()).andReturn().getResponse().getCookie(JWT_COOKIE_NAME));
-		assertTrue(cookieNew.isPresent());
-		mockMvc.perform(get(PING_URL).cookie(cookieNew.get())).andExpect(status().isOk());
+		Cookie cookieNew = mockMvc.perform(get(PING_URL).cookie(cookie))
+				.andExpect(status().isOk()).andReturn().getResponse().getCookie(JWT_COOKIE_NAME);
+		assertNotNull(cookieNew);
+		mockMvc.perform(get(PING_URL).cookie(cookieNew)).andExpect(status().isOk());
 	}
 
 	@Test
@@ -117,9 +117,9 @@ public class JwtTokenIntegrationTests {
 				.andExpect(status().isOk()).andReturn().getResponse().getCookie(JWT_COOKIE_NAME);
 		mockMvc.perform(get(AUTH_API_LOGOUT_URL).cookie(authCookie)).andExpect(status().isOk());
 
-		Optional<Cookie> authCookieNew = Optional.ofNullable(mockMvc.perform(post(AUTH_API_LOGIN_URL))
-				.andExpect(status().isBadRequest()).andReturn().getResponse().getCookie(JWT_COOKIE_NAME));
-		assertFalse(authCookieNew.isPresent());
+		Cookie authCookieNew = mockMvc.perform(post(AUTH_API_LOGIN_URL))
+				.andExpect(status().isBadRequest()).andReturn().getResponse().getCookie(JWT_COOKIE_NAME);
+		assertNull(authCookieNew);
 		String authJson1 = mapper.writeValueAsString(new LoginRequest(LOGIN, "Wrong_Password_0"));
 		mockMvc.perform(post(AUTH_API_LOGIN_URL).contentType(MediaType.APPLICATION_JSON).content(authJson1))
 				.andExpect(status().isUnauthorized());
