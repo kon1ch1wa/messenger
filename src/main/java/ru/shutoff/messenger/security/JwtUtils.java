@@ -50,8 +50,6 @@ public class JwtUtils {
 
 	public Key key() {
 		return Keys.hmacShaKeyFor(Encoders.BASE64.encode(JwtSecretKey.getBytes()).getBytes());
-		//return Keys.hmacShaKeyFor(Decoders.BASE64URL.decode(JwtSecretKey));
-		//return Keys.hmacShaKeyFor(JwtSecretKey.getBytes());
 	}
 
 	public String getUsernameFromJwtToken(String jwtToken) {

@@ -19,9 +19,6 @@ public class PingController {
 	@GetMapping("/ping")
 	public String ping(HttpServletRequest request, HttpServletResponse response) {
 		Cookie cookie = jwtUtils.getJwtCookieFromRequest(request);
-		if (cookie == null) {
-			throw new NotAuthorizedException("Not Authorized!");
-		}
 		jwtUtils.refreshJwtToken(cookie.getValue(), cookie);
 		response.addCookie(cookie);
 		return "ping";

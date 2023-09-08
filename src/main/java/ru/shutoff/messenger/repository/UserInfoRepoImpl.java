@@ -20,7 +20,7 @@ import java.util.UUID;
 public class UserInfoRepoImpl implements UserInfoRepo {
 	private static final String SQL_SAVE = "insert into users_data(id, email, login, password, is_activated, token) values (?, ?, ?, ?, ?, ?)";
 	private static final String SQL_GET_USER_BY_TOKEN = "select id, email, login, password, is_activated, description, phone_number, url_tag, token from users_data where token=?";
-	private static final String SQL_UPDATE = "update users_data set email=?, login=?, password=?, is_activated=?, description=?, phone_number=?, url_tag=?, token=? where id=?";
+	private static final String SQL_UPDATE = "update users_data set password=?, is_activated=?, description=coalesce(?, description), phone_number=coalesce(?, phone_number), url_tag=coalesce(?, url_tag), token=? where id=?";
 	private static final String SQL_GET_USER_BY_ID = "select id, email, login, password, is_activated, description, phone_number, url_tag, token from users_data where id=?";
 	private static final String SQL_GET_USER_BY_EMAIL = "select id, email, login, password, is_activated, description, phone_number, url_tag, token from users_data where email=?";
 	private static final String SQL_GET_USER_BY_LOGIN = "select id, email, login, password, is_activated, description, phone_number, url_tag, token from users_data where login=?";
@@ -62,44 +62,11 @@ public class UserInfoRepoImpl implements UserInfoRepo {
 	@Override
 	public void update(User user) {
 		try {
-			jdbcTemplate.update(SQL_UPDATE, user.getEmail(), user.getLogin(), user.getPassword(), user.isActivated(), user.getDescription(), user.getPhoneNumber(), user.getUrlTag(), user.getToken(), user.getId());
+			jdbcTemplate.update(SQL_UPDATE, user.getPassword(), user.isActivated(), user.getDescription(), user.getPhoneNumber(), user.getUrlTag(), user.getToken(), user.getId());
 		} catch (DuplicateKeyException ex) {
 			throw new DuplicateUserException("Some data that should be unique is duplicated, please check.");
 		} catch (DataAccessException ex) {
 			throw new UsernameNotFoundException("No such user");
-		}
-	}
-
-	@Override
-	public void updateValueById(String type, String value, UUID userId) {
-		try {
-			jdbcTemplate.update(String.format("update users_data set %s=? where id=?", type), value, userId);
-		} catch (DuplicateKeyException ex) {
-			throw new DuplicateUserException("Some data that should be unique is duplicated, please check.");
-		} catch (DataAccessException ex) {
-			throw new UsernameNotFoundException("No user with this id");
-		}
-	}
-
-	@Override
-	public void updateValueByEmail(String type, String value, String email) {
-		try {
-			jdbcTemplate.update(String.format("update users_data set %s=? where email=?", type), value, email);
-		} catch (DuplicateKeyException ex) {
-			throw new DuplicateUserException("Some data that should be unique is duplicated, please check.");
-		} catch (DataAccessException ex) {
-			throw new UsernameNotFoundException("No user with this email");
-		}
-	}
-
-	@Override
-	public void updateValueByLogin(String type, String value, String login) {
-		try {
-			jdbcTemplate.update(String.format("update users_data set %s=? where login=?", type), value, login);
-		} catch (DuplicateKeyException ex) {
-			throw new DuplicateUserException("Some data that should be unique is duplicated, please check.");
-		} catch (DataAccessException ex) {
-			throw new UsernameNotFoundException("No user with this login");
 		}
 	}
 

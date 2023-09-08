@@ -10,9 +10,6 @@ public interface UserInfoRepo {
 	void save(User user);
 	User getPrimary(String token);
 	void update(User user);
-	void updateValueById(String type, String value, UUID userId);
-	void updateValueByEmail(String type, String value, String email);
-	void updateValueByLogin(String type, String value, String login);
 	String getLoginByEmail(String email);
 	String getEmailByLogin(String login);
 	User getById(UUID userId);

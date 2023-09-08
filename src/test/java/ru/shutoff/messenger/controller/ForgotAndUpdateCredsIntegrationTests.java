@@ -86,7 +86,7 @@ public class ForgotAndUpdateCredsIntegrationTests {
 
 		mockMvc.perform(get(CHECK_LOGIN_URL).param(KEY, invalidKey)).andExpect(status().isBadRequest());
 		String login = mockMvc.perform(get(CHECK_LOGIN_URL).param(KEY, key)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-		assertEquals(login, LOGIN);
+		assertEquals(LOGIN, login);
 		mockMvc.perform(get(CHECK_LOGIN_URL).param(KEY, halfValidKey)).andExpect(status().isBadRequest());
 	}
 
@@ -125,12 +125,17 @@ public class ForgotAndUpdateCredsIntegrationTests {
 		Cookie cookie = registerUser(mockMvc);
 		String invalidJsonPass = mapper.writeValueAsString(new RestorePasswordWithAccessDto("Test_Pass_0", "New_Test_Pass_1", "New_Test_Pass_2"));
 		String newPasswordJson = mapper.writeValueAsString(new RestorePasswordWithAccessDto("Test_Pass_0", "New_Test_Pass_0", "New_Test_Pass_0"));
+		String oldPasswordInvalidJson = mapper.writeValueAsString(new RestorePasswordWithAccessDto("Test_Pass_1", "New_Test_Pass_0", "New_Test_Pass_0"));
 
 		mockMvc.perform(patch(UPDATE_PASSWORD_URL).contentType(MediaType.APPLICATION_JSON).content(invalidJsonPass))
 				.andExpect(status().isUnauthorized());
 		mockMvc.perform(patch(UPDATE_PASSWORD_URL).contentType(MediaType.APPLICATION_JSON).content(newPasswordJson))
 				.andExpect(status().isUnauthorized());
+		mockMvc.perform(patch(UPDATE_PASSWORD_URL).contentType(MediaType.APPLICATION_JSON).content(oldPasswordInvalidJson))
+				.andExpect(status().isUnauthorized());
 		mockMvc.perform(patch(UPDATE_PASSWORD_URL).contentType(MediaType.APPLICATION_JSON).content(invalidJsonPass).cookie(cookie))
+				.andExpect(status().isBadRequest());
+		mockMvc.perform(patch(UPDATE_PASSWORD_URL).contentType(MediaType.APPLICATION_JSON).content(oldPasswordInvalidJson).cookie(cookie))
 				.andExpect(status().isBadRequest());
 		String content = mockMvc.perform(patch(UPDATE_PASSWORD_URL).contentType(MediaType.APPLICATION_JSON).content(newPasswordJson).cookie(cookie))
 				.andExpect(status().isOk()).andReturn().getResponse().getContentAsString();

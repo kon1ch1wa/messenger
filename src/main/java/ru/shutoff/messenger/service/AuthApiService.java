@@ -81,19 +81,11 @@ public class AuthApiService {
 	public User updateUser(String jwtToken, String description, String phoneNumber, String urlTag) {
 		String login = jwtUtils.getUsernameFromJwtToken(jwtToken);
 		User user = userInfoRepo.getByLogin(login);
-		if (description != null) {
-			user.setDescription(description);
-			userInfoRepo.updateValueByLogin("description", description, login);
-		}
-		if (phoneNumber != null) {
-			user.setPhoneNumber(phoneNumber);
-			userInfoRepo.updateValueByLogin("phone_number", phoneNumber, login);
-		}
-		if (urlTag != null) {
-			user.setUrlTag(urlTag);
-			userInfoRepo.updateValueByLogin("url_tag", urlTag, login);
-		}
-		return user;
+		user.setDescription(description);
+		user.setPhoneNumber(phoneNumber);
+		user.setUrlTag(urlTag);
+		userInfoRepo.update(user);
+		return userInfoRepo.getByLogin(login);
 	}
 
 	public String login(String login, String password) {
@@ -117,8 +109,6 @@ public class AuthApiService {
 	}
 
 	/*
-	TODO Написать валидацию для данных, которые поступают на вход
-	TODO Исключения, если значение поля, которое должно быть уникальным уже существует или валидация не прошла
 	TODO ПРИКРУТИТЬ REDIS, RABBITMQ
 	TODO ЧАТ + РАЗОБРАТЬСЯ С WEBSOCKET
 	*/

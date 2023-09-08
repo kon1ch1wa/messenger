@@ -60,9 +60,6 @@ public class AuthApiController {
     @GetMapping("/logout")
     public void logout(HttpServletRequest request, HttpServletResponse response) {
         Cookie cookie = jwtUtils.getJwtCookieFromRequest(request);
-        if (cookie == null) {
-            throw new NotAuthorizedException("Not Authorized to logout");
-        }
         service.logout(cookie);
         response.addCookie(cookie);
     }

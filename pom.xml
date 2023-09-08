@@ -145,6 +145,11 @@
 				<groupId>org.jacoco</groupId>
 				<artifactId>jacoco-maven-plugin</artifactId>
 				<version>${jacoco.version}</version>
+				<configuration>
+					<excludes>
+						<exclude>ru/shutoff/messenger/MessengerApplication*</exclude>
+					</excludes>
+				</configuration>
 				<executions>
 					<execution>
 						<goals>
