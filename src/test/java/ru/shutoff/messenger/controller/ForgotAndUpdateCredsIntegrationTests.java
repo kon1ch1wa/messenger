@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -24,6 +25,8 @@ import ru.shutoff.messenger.dto.RestorePasswordNoAccessDto;
 import ru.shutoff.messenger.dto.RestorePasswordWithAccessDto;
 import ru.shutoff.messenger.model.User;
 import ru.shutoff.messenger.repository.UserInfoRepo;
+import ru.shutoff.messenger.setup.SetupMethods;
+import ru.shutoff.messenger.setup.TestConfiguration;
 
 import java.util.Base64;
 import java.util.UUID;
@@ -35,14 +38,11 @@ import static ru.shutoff.messenger.setup.SetupMethods.*;
 
 @Testcontainers
 @SpringBootTest(classes = MessengerApplication.class)
+@Import(TestConfiguration.class)
 @AutoConfigureMockMvc
 public class ForgotAndUpdateCredsIntegrationTests {
 	@Container
-	private static final PostgreSQLContainer<?> container = new PostgreSQLContainer<>("postgres:15.3")
-			.withUsername("admin")
-			.withPassword("admin")
-			.withDatabaseName("messenger_db")
-			.withExposedPorts(5432);
+	private static final PostgreSQLContainer<?> container = SetupMethods.container;
 
 	@DynamicPropertySource
 	static void registerProps(DynamicPropertyRegistry registry) {
@@ -60,7 +60,9 @@ public class ForgotAndUpdateCredsIntegrationTests {
 
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
-	private static final ObjectMapper mapper = new ObjectMapper();
+
+	@Autowired
+	private ObjectMapper mapper;
 
 	private static final String KEY = "key";
 

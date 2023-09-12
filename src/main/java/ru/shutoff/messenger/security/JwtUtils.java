@@ -25,6 +25,9 @@ public class JwtUtils {
 	@Value("${jwt.secret}")
 	private String JwtSecretKey;
 
+	@Value("${jwt.cookie_name}")
+	private String JwtCookieName;
+
 	public String generateJwtToken(Authentication authentication, String username, String password) {
 		UserDetails userDetails = new User(username, password, authentication.getAuthorities());
 		return Jwts.builder()
@@ -79,12 +82,19 @@ public class JwtUtils {
 		Cookie[] cookieAuth = request.getCookies();
 		if (cookieAuth != null) {
 			for (Cookie cookie: cookieAuth) {
-				if (cookie.getName().equals("JwtToken")) {
+				if (cookie.getName().equals(JwtCookieName)) {
 					jwtCookie = cookie;
 					break;
 				}
 			}
 		}
+		return jwtCookie;
+	}
+
+	public Cookie formCookie(String jwt) {
+		Cookie jwtCookie = new Cookie(JwtCookieName, jwt);
+		jwtCookie.setHttpOnly(true);
+		jwtCookie.setSecure(true);
 		return jwtCookie;
 	}
 }

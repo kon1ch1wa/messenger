@@ -5,3 +5,4 @@ target/
 *.iml
 build/
 cleaning.sh
+*application.yml
