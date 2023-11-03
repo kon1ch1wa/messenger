@@ -2,7 +2,8 @@ version: '3.3'
 
 services:
   app:
-    build: .
+    build:
+      dockerfile: app.Dockerfile
     ports:
       - "8080:8080"
     depends_on:
@@ -19,7 +20,8 @@ services:
   rabbit:
     image: rabbitmq:3.12.4-management
     hostname: rabbitmq
-    command: rabbitmq-plugins enable rabbitmq_web_stomp
+    build:
+      dockerfile: rabbitmq.Dockerfile
     restart: always
     ports:
       - "15672:15672"
