@@ -2,7 +2,6 @@ package ru.shutoff.messenger.controller;
 
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -14,22 +13,18 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.jdbc.JdbcTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.transaction.annotation.Transactional;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.shaded.com.fasterxml.jackson.core.JsonProcessingException;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 import ru.shutoff.messenger.MessengerApplication;
 import ru.shutoff.messenger.dto.RestorePasswordNoAccessDto;
 import ru.shutoff.messenger.dto.RestorePasswordWithAccessDto;
 import ru.shutoff.messenger.model.User;
-import ru.shutoff.messenger.repository.UserInfoRepo;
 import ru.shutoff.messenger.setup.SetupMethods;
 import ru.shutoff.messenger.setup.TestConfiguration;
 
 import java.util.Base64;
-import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -78,7 +73,7 @@ public class ForgotAndUpdateCredsIntegrationTests {
 			post(FORGOT_LOGIN_URL).contentType(MediaType.APPLICATION_JSON).content(invalidJson)
 		).andExpect(status().isNotFound());
 
-		registerUser(mockMvc);
+		activateUser(mockMvc, registerUser(mockMvc));
 
 		String invalidKey = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 		String halfValidKey = new String(Base64.getUrlEncoder().encode(EMAIL.getBytes()));
@@ -99,7 +94,7 @@ public class ForgotAndUpdateCredsIntegrationTests {
 				post(FORGOT_PASSWORD_URL).contentType(MediaType.APPLICATION_JSON).content(invalidJsonLogin)
 		).andExpect(status().isNotFound());
 
-		registerUser(mockMvc);
+		activateUser(mockMvc, registerUser(mockMvc));
 		String invalidJsonPass = mapper.writeValueAsString(new RestorePasswordNoAccessDto("New_Test_Pass_1", "New_Test_Pass_2"));
 		String newPasswordJson = mapper.writeValueAsString(new RestorePasswordNoAccessDto("New_Test_Pass_0", "New_Test_Pass_0"));
 
@@ -124,7 +119,7 @@ public class ForgotAndUpdateCredsIntegrationTests {
 
 	@Test
 	public void updatePasswordWithJwtTest() throws Exception {
-		Cookie cookie = registerUser(mockMvc);
+		Cookie cookie = activateUser(mockMvc, registerUser(mockMvc));
 		String invalidJsonPass = mapper.writeValueAsString(new RestorePasswordWithAccessDto("Test_Pass_0", "New_Test_Pass_1", "New_Test_Pass_2"));
 		String newPasswordJson = mapper.writeValueAsString(new RestorePasswordWithAccessDto("Test_Pass_0", "New_Test_Pass_0", "New_Test_Pass_0"));
 		String oldPasswordInvalidJson = mapper.writeValueAsString(new RestorePasswordWithAccessDto("Test_Pass_1", "New_Test_Pass_0", "New_Test_Pass_0"));

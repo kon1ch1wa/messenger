@@ -14,11 +14,13 @@ import java.util.UUID;
 @Builder
 public class User {
 	@Id
-	private UUID id;
+	private String id;
 	@NotNull
 	private String email;
 	@NotNull
 	private String login;
+	@NotNull
+	private String name;
 	@NotNull
 	private String password;
 	@NotNull

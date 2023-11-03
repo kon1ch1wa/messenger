@@ -1,38 +1,30 @@
 package ru.shutoff.messenger.controller;
 
 import jakarta.servlet.http.Cookie;
-import lombok.RequiredArgsConstructor;
-import org.checkerframework.checker.units.qual.A;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.InjectMocks;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpServletResponse;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.jdbc.JdbcTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.transaction.annotation.Transactional;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 import ru.shutoff.messenger.MessengerApplication;
 import ru.shutoff.messenger.dto.LoginRequest;
-import ru.shutoff.messenger.dto.UserPrimaryInfoDTO;
 import ru.shutoff.messenger.dto.UserSecondaryInfoDTO;
 import ru.shutoff.messenger.model.User;
 import ru.shutoff.messenger.setup.SetupMethods;
 import ru.shutoff.messenger.setup.TestConfiguration;
 
-import java.util.Set;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -121,8 +113,8 @@ class RegistrationAndUpdatingIntegrationTests {
 	@Test
 	void registerSameUserTest() throws Exception {
 		String json1 = SetupMethods.wrapPrimaryInfo();
-		String json2 = SetupMethods.wrapPrimaryInfo(SetupMethods.EMAIL, "test_another_login", SetupMethods.PASS);
-		String json3 = SetupMethods.wrapPrimaryInfo("test.another@dev.ru", SetupMethods.LOGIN, SetupMethods.PASS);
+		String json2 = SetupMethods.wrapPrimaryInfo(SetupMethods.EMAIL, "test_another_login", "Vitalya", SetupMethods.PASS);
+		String json3 = SetupMethods.wrapPrimaryInfo("test.another@dev.ru", SetupMethods.LOGIN, "Vitalya", SetupMethods.PASS);
 		mockMvc.perform(post(SetupMethods.AUTH_API_USER_URL).contentType(MediaType.APPLICATION_JSON).content(json1))
 				.andExpect(status().isOk());
 		mockMvc.perform(post(SetupMethods.AUTH_API_USER_URL).contentType(MediaType.APPLICATION_JSON).content(json2))
@@ -145,8 +137,7 @@ class RegistrationAndUpdatingIntegrationTests {
 	void updateUserTest() throws Exception {
 		MockHttpServletResponse response;
 		User user;
-		Cookie cookie = SetupMethods.registerUser(mockMvc);
-
+		Cookie cookie = SetupMethods.activateUser(mockMvc, SetupMethods.registerUser(mockMvc));
 		String jsonSecondary_d = SetupMethods.wrapSecondaryInfo(SetupMethods.DESC, null, null);
 		response = mockMvc.perform(patch(SetupMethods.AUTH_API_USER_URL).contentType(MediaType.APPLICATION_JSON).content(jsonSecondary_d).cookie(cookie))
 				.andExpect(status().isOk()).andReturn().getResponse();
@@ -177,8 +168,8 @@ class RegistrationAndUpdatingIntegrationTests {
 	public void updateDuplicatedDataTest() throws Exception {
 		String phoneNumberJson = mapper.writeValueAsString(new UserSecondaryInfoDTO(null, "+79217642904", null));
 		String urlTagJson = mapper.writeValueAsString(new UserSecondaryInfoDTO(null, null, "kon1ch1wa"));
-		Cookie cookie1 = SetupMethods.registerUser(mockMvc);
-		Cookie cookie2 = SetupMethods.registerAnotherUser(mockMvc);
+		Cookie cookie1 = SetupMethods.activateUser(mockMvc, SetupMethods.registerUser(mockMvc));
+		Cookie cookie2 = SetupMethods.activateUser(mockMvc, SetupMethods.registerAnotherUser(mockMvc));
 
 		cookie1 = mockMvc.perform(patch(SetupMethods.AUTH_API_USER_URL).cookie(cookie1).contentType(MediaType.APPLICATION_JSON).content(phoneNumberJson))
 				.andExpect(status().isOk()).andReturn().getResponse().getCookie(jwtCookieName);

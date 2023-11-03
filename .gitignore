@@ -6,3 +6,5 @@ target/
 build/
 cleaning.sh
 *application.yml
+src/main/resources/static
+src/main/resources/templates

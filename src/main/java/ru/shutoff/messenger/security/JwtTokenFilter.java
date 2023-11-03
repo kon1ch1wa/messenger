@@ -39,7 +39,7 @@ public class JwtTokenFilter extends OncePerRequestFilter {
 				authenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 				SecurityContextHolder.getContext().setAuthentication(authenticationToken);
 			}
-		} catch (Exception e) {
+		} catch (Exception ex) {
 			response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Not allowed for non-authenticated users");
 		}
 		filterChain.doFilter(request, response);

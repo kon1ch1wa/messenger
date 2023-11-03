@@ -18,21 +18,23 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @Component
 public class UserInfoRepoImpl implements UserInfoRepo {
-	private static final String SQL_SAVE = "insert into users_data(id, email, login, password, is_activated, token) values (?, ?, ?, ?, ?, ?)";
-	private static final String SQL_GET_USER_BY_TOKEN = "select id, email, login, password, is_activated, description, phone_number, url_tag, token from users_data where token=?";
+	private static final String SQL_SAVE = "insert into users_data(id, email, login, name, password, is_activated, token) values (?, ?, ?, ?, ?, ?, ?)";
+	private static final String SQL_GET_USER_BY_TOKEN = "select * from users_data where token=?";
 	private static final String SQL_UPDATE = "update users_data set password=?, is_activated=?, description=coalesce(?, description), phone_number=coalesce(?, phone_number), url_tag=coalesce(?, url_tag), token=? where id=?";
-	private static final String SQL_GET_USER_BY_ID = "select id, email, login, password, is_activated, description, phone_number, url_tag, token from users_data where id=?";
-	private static final String SQL_GET_USER_BY_EMAIL = "select id, email, login, password, is_activated, description, phone_number, url_tag, token from users_data where email=?";
-	private static final String SQL_GET_USER_BY_LOGIN = "select id, email, login, password, is_activated, description, phone_number, url_tag, token from users_data where login=?";
+	private static final String SQL_GET_USER_BY_ID = "select * from users_data where id=?";
+	private static final String SQL_GET_USER_BY_EMAIL = "select * from users_data where email=?";
+	private static final String SQL_GET_USER_BY_LOGIN = "select * from users_data where login=?";
+	private static final String SQL_GET_USER_BY_TAG = "select * from users_data where url_tag=?";
 	private static final String SQL_GET_LOGIN_BY_EMAIL = "select login from users_data where email=?";
 	private static final String SQL_GET_EMAIL_BY_LOGIN = "select email from users_data where login=?";
 
 	private final JdbcTemplate jdbcTemplate;
 
 	private final RowMapper<User> userMapper = (rs, rowNum) -> new User(
-			rs.getObject("id", UUID.class),
+			rs.getString("id"),
 			rs.getString("email"),
 			rs.getString("login"),
+			rs.getString("name"),
 			rs.getString("password"),
 			rs.getBoolean("is_activated"),
 			rs.getString("description"),
@@ -44,7 +46,7 @@ public class UserInfoRepoImpl implements UserInfoRepo {
 	@Override
 	public void save(User user) {
 		try {
-			jdbcTemplate.update(SQL_SAVE, user.getId(), user.getEmail(), user.getLogin(), user.getPassword(), user.isActivated(), user.getToken());
+			jdbcTemplate.update(SQL_SAVE, user.getId(), user.getEmail(), user.getLogin(), user.getName(), user.getPassword(), user.isActivated(), user.getToken());
 		} catch (DataAccessException ex) {
 			throw new DuplicateUserException("User with this email or login already exists");
 		}
@@ -71,7 +73,7 @@ public class UserInfoRepoImpl implements UserInfoRepo {
 	}
 
 	@Override
-	public User getById(UUID userId) {
+	public User getById(String userId) {
 		try {
 			return jdbcTemplate.queryForObject(SQL_GET_USER_BY_ID, userMapper, userId);
 		} catch (DataAccessException ex) {
@@ -112,6 +114,15 @@ public class UserInfoRepoImpl implements UserInfoRepo {
 			return jdbcTemplate.queryForObject(SQL_GET_EMAIL_BY_LOGIN, String.class, login);
 		} catch (DataAccessException ex) {
 			throw new UsernameNotFoundException("No user with this login");
+		}
+	}
+
+	@Override
+	public User getByUrlTag(String urlTag) {
+		try {
+			return jdbcTemplate.queryForObject(SQL_GET_USER_BY_TAG, userMapper, urlTag);
+		} catch (DataAccessException ex) {
+			throw new UsernameNotFoundException("No user with this url tag");
 		}
 	}
 }

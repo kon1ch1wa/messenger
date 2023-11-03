@@ -1,12 +1,7 @@
 package ru.shutoff.messenger.setup;
 
 import jakarta.servlet.http.Cookie;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Scope;
+import org.springframework.data.util.Pair;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -28,6 +23,7 @@ public class SetupMethods {
 
 	public static final String EMAIL = "spring.email.receiver.daemon@gmail.com";
 	public static final String LOGIN = "test_login";
+	public static final String NAME = "Anton";
 	public static final String PASS = "Test_Pass_0";
 	public static final String DESC = "test_description";
 	public static final String PHONE_NUMBER = "+79217642904";
@@ -44,7 +40,7 @@ public class SetupMethods {
 	public static final String UPDATE_PASSWORD_URL = "/updateCredsApi/restorePassword";
 
 	public static String wrapPrimaryInfo() throws JsonProcessingException {
-		UserPrimaryInfoDTO info = new UserPrimaryInfoDTO(EMAIL, LOGIN, PASS);
+		UserPrimaryInfoDTO info = new UserPrimaryInfoDTO(EMAIL, LOGIN, NAME, PASS);
 		return new ObjectMapper().writeValueAsString(info);
 	}
 
@@ -53,8 +49,8 @@ public class SetupMethods {
 		return new ObjectMapper().writeValueAsString(info);
 	}
 
-	public static String wrapPrimaryInfo(String email, String login, String password) throws JsonProcessingException {
-		UserPrimaryInfoDTO info = new UserPrimaryInfoDTO(email, login, password);
+	public static String wrapPrimaryInfo(String email, String login, String name, String password) throws JsonProcessingException {
+		UserPrimaryInfoDTO info = new UserPrimaryInfoDTO(email, login, name, password);
 		return new ObjectMapper().writeValueAsString(info);
 	}
 
@@ -63,21 +59,39 @@ public class SetupMethods {
 		return new ObjectMapper().writeValueAsString(info);
 	}
 
-	public static Cookie registerUser(MockMvc mockMvc) throws Exception {
+	public static User registerUser(MockMvc mockMvc) throws Exception {
 		String jsonPrimary = wrapPrimaryInfo();
 		String content = mockMvc.perform(post(AUTH_API_USER_URL).contentType(MediaType.APPLICATION_JSON).content(jsonPrimary))
 				.andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-		User user = new ObjectMapper().readValue(content, User.class);
+		return new ObjectMapper().readValue(content, User.class);
+	}
+
+	public static User registerAnotherUser(MockMvc mockMvc) throws Exception {
+		String jsonPrimary = wrapPrimaryInfo("spring@dev.ru", "test_another_login", "Vladimir", "Test_Another_Pass_0");
+		String content = mockMvc.perform(post(AUTH_API_USER_URL).contentType(MediaType.APPLICATION_JSON).content(jsonPrimary))
+				.andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+		return new ObjectMapper().readValue(content, User.class);
+	}
+
+	public static User registerThirdUser(MockMvc mockMvc) throws Exception {
+		String jsonPrimary = wrapPrimaryInfo("spring@gov.ru", "test_third_login", "Vitaliy", "Test_Third_Pass_0");
+		String content = mockMvc.perform(post(AUTH_API_USER_URL).contentType(MediaType.APPLICATION_JSON).content(jsonPrimary))
+				.andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+		return new ObjectMapper().readValue(content, User.class);
+	}
+
+	public static Cookie activateUser(MockMvc mockMvc, User user) throws Exception {
 		return mockMvc.perform(get(AUTH_API_USER_URL).param("token", user.getToken()))
 				.andExpect(status().isOk()).andReturn().getResponse().getCookie("JwtToken");
 	}
 
-	public static Cookie registerAnotherUser(MockMvc mockMvc) throws Exception {
-		String jsonPrimary = wrapPrimaryInfo("spring@dev.ru", "test_another_login", "Test_Another_Pass_0");
+	public static Pair<User, Cookie> registerWithPairReturned(MockMvc mockMvc, String email, String login, String name, String password) throws Exception {
+		String jsonPrimary = wrapPrimaryInfo(email, login, name, password);
 		String content = mockMvc.perform(post(AUTH_API_USER_URL).contentType(MediaType.APPLICATION_JSON).content(jsonPrimary))
 				.andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 		User user = new ObjectMapper().readValue(content, User.class);
-		return mockMvc.perform(get(AUTH_API_USER_URL).param("token", user.getToken()))
-				.andExpect(status().isOk()).andReturn().getResponse().getCookie("JwtToken");
+		var response = mockMvc.perform(get(AUTH_API_USER_URL).param("token", user.getToken()))
+				.andExpect(status().isOk()).andReturn().getResponse();
+		return Pair.of(new ObjectMapper().readValue(response.getContentAsString(), User.class), response.getCookie("JwtToken"));
 	}
 }

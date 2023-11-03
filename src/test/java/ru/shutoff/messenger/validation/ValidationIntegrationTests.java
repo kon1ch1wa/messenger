@@ -12,7 +12,6 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.jdbc.JdbcTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.transaction.annotation.Transactional;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -61,12 +60,12 @@ public class ValidationIntegrationTests {
 
 	@Test
 	public void registerWithInvalidDataTest() throws Exception {
-		String invalidEmail = mapper.writeValueAsString(new UserPrimaryInfoDTO("not_valid_email", "valid_login", "Valid_Pass_123"));
-		String nullEmail = mapper.writeValueAsString(new UserPrimaryInfoDTO(null, "valid_login", "Valid_Pass_123"));
-		String invalidLogin = mapper.writeValueAsString(new UserPrimaryInfoDTO("valid_email@dev.ru", "=invalid_login=", "Valid_Pass_123"));
-		String nullLogin = mapper.writeValueAsString(new UserPrimaryInfoDTO("valid_email@dev.ru", null, "Valid_Pass_123"));
-		String invalidPassword = mapper.writeValueAsString(new UserPrimaryInfoDTO("valid_email@dev.ru", "valid_login", "invalid"));
-		String nullPassword = mapper.writeValueAsString(new UserPrimaryInfoDTO("valid_email@dev.ru", "valid_login", null));
+		String invalidEmail = mapper.writeValueAsString(new UserPrimaryInfoDTO("not_valid_email", "valid_login", "Anton", "Valid_Pass_123"));
+		String nullEmail = mapper.writeValueAsString(new UserPrimaryInfoDTO(null, "valid_login", "Anton", "Valid_Pass_123"));
+		String invalidLogin = mapper.writeValueAsString(new UserPrimaryInfoDTO("valid_email@dev.ru", "=invalid_login=", "Anton", "Valid_Pass_123"));
+		String nullLogin = mapper.writeValueAsString(new UserPrimaryInfoDTO("valid_email@dev.ru", null, "Anton", "Valid_Pass_123"));
+		String invalidPassword = mapper.writeValueAsString(new UserPrimaryInfoDTO("valid_email@dev.ru", "valid_login", "Anton", "invalid"));
+		String nullPassword = mapper.writeValueAsString(new UserPrimaryInfoDTO("valid_email@dev.ru", "valid_login", "Anton", null));
 		mockMvc.perform(post(SetupMethods.AUTH_API_USER_URL).contentType(MediaType.APPLICATION_JSON).content(invalidEmail))
 				.andExpect(status().isBadRequest());
 		mockMvc.perform(post(SetupMethods.AUTH_API_USER_URL).contentType(MediaType.APPLICATION_JSON).content(nullEmail))
@@ -83,7 +82,7 @@ public class ValidationIntegrationTests {
 
 	@Test
 	public void updateWithInvalidDataTest() throws Exception {
-		Cookie cookie = SetupMethods.registerUser(mockMvc);
+		Cookie cookie = SetupMethods.activateUser(mockMvc, SetupMethods.registerUser(mockMvc));
 		String invalidPhoneNumber = mapper.writeValueAsString(new UserSecondaryInfoDTO("desc", "+372587345", "url_tag"));
 		String nullPhoneNumber = mapper.writeValueAsString(new UserSecondaryInfoDTO("desc", "", "url_tag"));
 		String invalidUrlTag = mapper.writeValueAsString(new UserSecondaryInfoDTO("desc", "+79217642904", "_invalid_url_tag"));
@@ -104,7 +103,7 @@ public class ValidationIntegrationTests {
 		String nullLogin = mapper.writeValueAsString(new LoginRequest(null, "Test_Pass_0"));
 		String invalidPassword = mapper.writeValueAsString(new LoginRequest("test_login", "notcorrcetpass"));
 		String nullPassword = mapper.writeValueAsString(new LoginRequest("test_login", null));
-		Cookie cookie = SetupMethods.registerUser(mockMvc);
+		Cookie cookie = SetupMethods.activateUser(mockMvc, SetupMethods.registerUser(mockMvc));
 		mockMvc.perform(get(SetupMethods.AUTH_API_LOGOUT_URL).cookie(cookie)).andExpect(status().isOk());
 		mockMvc.perform(post(SetupMethods.AUTH_API_LOGIN_URL).contentType(MediaType.APPLICATION_JSON).content(invalidLogin))
 				.andExpect(status().isBadRequest());
@@ -128,7 +127,7 @@ public class ValidationIntegrationTests {
 		String nullNewPasswordNoAccess = mapper.writeValueAsString(new RestorePasswordNoAccessDto(null, "New_Test_Pass_0"));
 		String invalidNewPasswordConfirmationNoAccess = mapper.writeValueAsString(new RestorePasswordNoAccessDto("New_Test_Pass_0", "newpass"));
 		String nullNewPasswordConfirmationNoAccess = mapper.writeValueAsString(new RestorePasswordNoAccessDto("New_Test_Pass_0", null));
-		Cookie cookie = SetupMethods.registerUser(mockMvc);
+		Cookie cookie = SetupMethods.activateUser(mockMvc, SetupMethods.registerUser(mockMvc));
 		mockMvc.perform(patch(SetupMethods.UPDATE_PASSWORD_URL).cookie(cookie).contentType(MediaType.APPLICATION_JSON).content(invalidOldPassword))
 				.andExpect(status().isBadRequest());
 		mockMvc.perform(patch(SetupMethods.UPDATE_PASSWORD_URL).cookie(cookie).contentType(MediaType.APPLICATION_JSON).content(nullOldPassword))

@@ -12,7 +12,8 @@ public interface UserInfoRepo {
 	void update(User user);
 	String getLoginByEmail(String email);
 	String getEmailByLogin(String login);
-	User getById(UUID userId);
+	User getById(String userId);
 	User getByEmail(String email);
 	User getByLogin(String login);
+	User getByUrlTag(String urlTag);
 }

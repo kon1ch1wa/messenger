@@ -31,7 +31,7 @@ public class AuthApiController {
 
     @PostMapping("/user")
     public User registerUser(@Valid @RequestBody UserPrimaryInfoDTO dto) {
-        return service.register(dto.email(), dto.login(), dto.password());
+        return service.register(dto.email(), dto.login(), dto.name(), dto.password());
     }
 
     @GetMapping("/user")

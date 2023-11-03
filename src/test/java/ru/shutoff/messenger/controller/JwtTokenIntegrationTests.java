@@ -1,8 +1,6 @@
 package ru.shutoff.messenger.controller;
 
 import jakarta.servlet.http.Cookie;
-import lombok.RequiredArgsConstructor;
-import org.checkerframework.checker.units.qual.A;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,7 +13,6 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.jdbc.JdbcTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.transaction.annotation.Transactional;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -25,7 +22,6 @@ import ru.shutoff.messenger.dto.LoginRequest;
 import ru.shutoff.messenger.setup.SetupMethods;
 import ru.shutoff.messenger.setup.TestConfiguration;
 
-import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 import static ru.shutoff.messenger.setup.SetupMethods.*;
@@ -79,14 +75,14 @@ public class JwtTokenIntegrationTests {
 
 	@Test
 	void pingAuthorizedCookieTest() throws Exception {
-		Cookie cookie = registerUser(mockMvc);
+		Cookie cookie = activateUser(mockMvc, registerUser(mockMvc));
 		mockMvc.perform(get(PING_URL).cookie(cookie)).andExpect(status().isOk());
 	}
 
 	@Test
 	void pingUpdatingCookieTest() throws Exception {
 		mockMvc.perform(get(PING_URL)).andExpect(status().isUnauthorized());
-		Cookie cookie = registerUser(mockMvc);
+		Cookie cookie = activateUser(mockMvc, registerUser(mockMvc));
 		Cookie cookieNew = mockMvc.perform(get(PING_URL).cookie(cookie))
 				.andExpect(status().isOk()).andReturn().getResponse().getCookie(jwtCookieName);
 		assertNotNull(cookieNew);
@@ -95,7 +91,7 @@ public class JwtTokenIntegrationTests {
 
 	@Test
 	void pingUpdatingCookieLifecycleTest() throws Exception {
-		Cookie cookie = registerUser(mockMvc);
+		Cookie cookie = activateUser(mockMvc, registerUser(mockMvc));
 
 		cookie = mockMvc.perform(get(PING_URL).cookie(cookie))
 				.andExpect(status().isOk()).andReturn().getResponse().getCookie(jwtCookieName);
@@ -109,7 +105,7 @@ public class JwtTokenIntegrationTests {
 	@Test
 	void loginTest() throws Exception {
 		mockMvc.perform(get(AUTH_API_LOGOUT_URL)).andExpect(status().isUnauthorized());
-		Cookie cookie = registerUser(mockMvc);
+		Cookie cookie = activateUser(mockMvc, registerUser(mockMvc));
 
 		cookie = mockMvc.perform(get(PING_URL).cookie(cookie))
 				.andExpect(status().isOk()).andReturn().getResponse().getCookie(jwtCookieName);
@@ -138,7 +134,7 @@ public class JwtTokenIntegrationTests {
 	@Test
 	void logoutTest() throws Exception {
 		mockMvc.perform(get(AUTH_API_LOGOUT_URL)).andExpect(status().isUnauthorized());
-		Cookie cookie = registerUser(mockMvc);
+		Cookie cookie = activateUser(mockMvc, registerUser(mockMvc));
 		cookie = mockMvc.perform(get(PING_URL).cookie(cookie))
 				.andExpect(status().isOk()).andReturn().getResponse().getCookie(jwtCookieName);
 		cookie = mockMvc.perform(get(AUTH_API_LOGOUT_URL).cookie(cookie)).andExpect(status().isOk())

@@ -15,6 +15,9 @@ public record UserPrimaryInfoDTO (
 		@LoginConstraint
 		String login,
 		@NotNull
+		@LoginConstraint
+		String name,
+		@NotNull
 		@PasswordConstraint
 		String password
 ) {

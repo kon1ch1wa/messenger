@@ -38,12 +38,13 @@ public class AuthApiService {
 			http://localhost:8080/authApi/user?token=%s
 			Do not answer on this message""";
 
-	public User register(String email, String login, String password) {
+	public User register(String email, String login, String name, String password) {
 		String token = UUID.randomUUID().toString();
 		User user = User.builder()
-				.id(UUID.randomUUID())
+				.id(UUID.randomUUID().toString().replace("-", ""))
 				.email(email)
 				.login(login)
+				.name(name)
 				.password(password)
 				.isActivated(false)
 				.token(token)
@@ -56,8 +57,8 @@ public class AuthApiService {
 			message.setSubject("Confirmation Email on MessengerApp");
 			message.setText(String.format(MESSAGE_MAIL, token));
 			mailSender.send(message);
-		} catch (Exception e) {
-			System.out.println(e.getMessage());
+		} catch (Exception ex) {
+			System.out.println(ex.getMessage());
 		}
 		return user;
 	}
@@ -111,8 +112,5 @@ public class AuthApiService {
 		jwtUtils.invalidateJwtToken(cookie);
 	}
 
-	/*
-	TODO ПРИКРУТИТЬ REDIS, RABBITMQ
-	TODO ЧАТ + РАЗОБРАТЬСЯ С WEBSOCKET
-	*/
+
 }
