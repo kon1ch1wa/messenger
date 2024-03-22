@@ -1,20 +1,25 @@
 package ru.shutoff.messenger.security;
 
-import io.jsonwebtoken.*;
-import io.jsonwebtoken.io.Encoders;
-import io.jsonwebtoken.security.Keys;
-import jakarta.servlet.http.Cookie;
-import jakarta.servlet.http.HttpServletRequest;
-import lombok.RequiredArgsConstructor;
+import java.security.Key;
+import java.util.Date;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
-import ru.shutoff.messenger.exception.NotAuthorizedException;
 
-import java.security.Key;
-import java.util.Date;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.MalformedJwtException;
+import io.jsonwebtoken.UnsupportedJwtException;
+import io.jsonwebtoken.io.Encoders;
+import io.jsonwebtoken.security.Keys;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
+import ru.shutoff.messenger.exception.NotAuthorizedException;
 
 @Component
 @RequiredArgsConstructor
@@ -38,7 +43,8 @@ public class JwtUtils {
 				.compact();
 	}
 
-	public void refreshJwtToken(String jwtToken, Cookie jwtCookie) {
+	public void refreshJwtToken(Cookie jwtCookie) {
+		String jwtToken = jwtCookie.getValue();
 		Claims claims = Jwts.parserBuilder().setSigningKey(key()).build().parseClaimsJws(jwtToken).getBody()
 				.setIssuedAt(new Date())
 				.setExpiration(new Date(new Date().getTime() + JwtExpiration));

@@ -1,10 +1,14 @@
 package ru.shutoff.messenger.chat_logic.model;
 
-import lombok.*;
-import org.springframework.data.annotation.Id;
-
-import java.sql.Date;
+import java.sql.Timestamp;
 import java.util.UUID;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import ru.shutoff.messenger.chat_logic.dto.MessageDto;
 
 @NoArgsConstructor
 @AllArgsConstructor
@@ -12,11 +16,26 @@ import java.util.UUID;
 @Setter
 @Builder
 public class Message {
-	@Id
-	private String messageId;
+	private Long messageId;
 	private String content;
-	private String senderId;
-	private String receiverId;
-	private String chatRoomId;
-	private Date sendDate;
+	private UUID senderId;
+	private UUID chatRoomId;
+	private Timestamp sendDate;
+
+	@Override
+	public String toString() {
+		return
+			this.getSenderId() + " sent " +
+			this.getContent() + " to " +
+			this.getChatRoomId();
+	}
+
+	public MessageDto toDto() {
+		String _senderId = senderId.toString();
+		String _chatRoomId = chatRoomId.toString();
+		if (_senderId == null || _chatRoomId == null) {
+			throw new NullPointerException("Invalid senderId or chatRoomId");
+		}
+		return new MessageDto(content, _senderId, _chatRoomId, sendDate);
+	}
 }

@@ -1,14 +1,13 @@
 package ru.shutoff.messenger.service;
 
-import lombok.RequiredArgsConstructor;
 import org.springframework.mail.MailSender;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+
+import lombok.RequiredArgsConstructor;
 import ru.shutoff.messenger.model.User;
 import ru.shutoff.messenger.repository.UserInfoRepo;
-
-import java.util.Base64;
 
 @Service
 @RequiredArgsConstructor
@@ -31,27 +30,27 @@ public class ForgotCredsService {
 	}
 
 	public String checkLogin(String key) {
-		User user = userInfoRepo.getPrimary(key);
+		User user = userInfoRepo.getByUnqiueToken(key);
 		user.setToken(null);
 		userInfoRepo.update(user);
 		return user.getLogin();
 	}
 
 	public String forgotPassword(String login) {
-		String email = userInfoRepo.getEmailByLogin(login);
+		String email = userInfoRepo.getByLogin(login).getEmail();
 		return encodeDataAndSendEmail(login, email, MESSAGE_RESTORE_PASSWORD);
 	}
 
-	private String encodeDataAndSendEmail(String data, String receiver, String text) {
+	private String encodeDataAndSendEmail(String data, String receiverEmail, String text) {
 		String key = passwordEncoder.encode(data);
 		key = key.substring(7);
 		SimpleMailMessage message = new SimpleMailMessage();
-		message.setTo(receiver);
+		message.setTo(receiverEmail);
 		message.setFrom("sender.email@daemon.org");
-		message.setSubject("Forgot Login on MessengerApp?");
+		message.setSubject("Forgot credentials on MessengerApp?");
 		message.setText(String.format(text, key));
 		mailSender.send(message);
-		User user = userInfoRepo.getByEmail(receiver);
+		User user = userInfoRepo.getByEmail(receiverEmail);
 		user.setToken(key);
 		userInfoRepo.update(user);
 		return key;

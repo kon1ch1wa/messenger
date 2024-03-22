@@ -1,5 +1,14 @@
 package ru.shutoff.messenger.controller;
 
+import org.springframework.data.util.Pair;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -8,19 +17,12 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.util.Pair;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.web.bind.annotation.*;
 import ru.shutoff.messenger.dto.LoginRequest;
-import ru.shutoff.messenger.dto.UserPrimaryInfoDTO;
-import ru.shutoff.messenger.dto.UserSecondaryInfoDTO;
-import ru.shutoff.messenger.exception.DuplicateUserException;
-import ru.shutoff.messenger.exception.NotAuthorizedException;
+import ru.shutoff.messenger.dto.RegisterRequest;
+import ru.shutoff.messenger.dto.UpdateInfoRequest;
 import ru.shutoff.messenger.model.User;
 import ru.shutoff.messenger.security.JwtUtils;
 import ru.shutoff.messenger.service.AuthApiService;
-
-import java.util.Arrays;
 
 @RestController
 @RequestMapping("/authApi")
@@ -30,7 +32,7 @@ public class AuthApiController {
     private final JwtUtils jwtUtils;
 
     @PostMapping("/user")
-    public User registerUser(@Valid @RequestBody UserPrimaryInfoDTO dto) {
+    public User registerUser(@Valid @RequestBody RegisterRequest dto) {
         return service.register(dto.email(), dto.login(), dto.name(), dto.password());
     }
 
@@ -43,13 +45,13 @@ public class AuthApiController {
 
     @PatchMapping("/user")
     public User updateUser(
-            @Valid @RequestBody UserSecondaryInfoDTO dto,
+            @Valid @RequestBody UpdateInfoRequest dto,
             HttpServletRequest request,
             HttpServletResponse response
     ) {
         Cookie cookie = jwtUtils.getJwtCookieFromRequest(request);
         User user = service.updateUser(cookie.getValue(), dto.description(), dto.phoneNumber(), dto.urlTag());
-        jwtUtils.refreshJwtToken(cookie.getValue(), cookie);
+        jwtUtils.refreshJwtToken(cookie);
         response.addCookie(cookie);
         return user;
     }

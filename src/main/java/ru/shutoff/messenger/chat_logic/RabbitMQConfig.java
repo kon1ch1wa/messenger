@@ -1,82 +1,75 @@
 package ru.shutoff.messenger.chat_logic;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.amqp.core.*;
+import java.util.logging.Logger;
+
+import org.springframework.amqp.core.TopicExchange;
 import org.springframework.amqp.rabbit.annotation.EnableRabbit;
-import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
 import org.springframework.amqp.rabbit.connection.CachingConnectionFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitAdmin;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
-import org.springframework.amqp.support.converter.MessageConverter;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.lang.NonNull;
+
+import lombok.RequiredArgsConstructor;
 
 @EnableRabbit
 @Configuration
+@RequiredArgsConstructor
 public class RabbitMQConfig {
-	private final String queueName = "rabbitmq.queue";
-	private final String exchange = "rabbitmq.exchange";
-	private final String routingKey = "rabbitmq.routing_key";
-	private final String username = "RMQAdmin";
-	private final String password = "RMQPassword";
-	private final String host = "rabbit";
-	private final Integer concurrentConsumers = 1;
-	private final Integer maxConcurrentConsumers = 100;
+	private final Logger logger = Logger.getGlobal();
+
+	@Value("${spring.rabbitmq.host}")
+	private String host;
+
+	@Value("${spring.rabbitmq.port}")
+	private int port;
+
+	@Value("${spring.rabbitmq.username}")
+	private String username;
+
+	@Value("${spring.rabbitmq.password}")
+	private String password;
+
+	@Value("${spring.rabbitmq.virtual-host}")
+	private String vHost;
+
+	@Value("${rabbit.exchange_name}")
+	private String exchange;
 
 	@Bean
-	public Queue queue() {
-		return new Queue(queueName, false);
+	public TopicExchange exchange() {
+		return new TopicExchange(exchange);
 	}
 
 	@Bean
-	public DirectExchange exchange() {
-		return new DirectExchange(exchange);
-	}
-
-	@Bean
-	public Binding binding(Queue queue, DirectExchange exchange) {
-		return BindingBuilder.bind(queue).to(exchange).with(routingKey);
-	}
-
-	@Bean
-	public MessageConverter jsonMessageConverter() {
-		ObjectMapper objectMapper = new ObjectMapper();
-		return new Jackson2JsonMessageConverter(objectMapper);
-	}
-
-	@Bean
-	public ConnectionFactory connectionFactory() {
+	public @NonNull ConnectionFactory connectionFactory() {
+		logger.info(host);
+		logger.info(String.valueOf(port));
+		logger.info(username);
+		logger.info(password);
+		logger.info(vHost);
+		logger.info(exchange);
 		CachingConnectionFactory connectionFactory = new CachingConnectionFactory();
 		connectionFactory.setHost(host);
+		connectionFactory.setPort(port);
 		connectionFactory.setUsername(username);
 		connectionFactory.setPassword(password);
+		connectionFactory.setVirtualHost(vHost);
 		return connectionFactory;
 	}
 
 	@Bean
-	public AmqpAdmin amqpAdmin() {
-		return new RabbitAdmin(connectionFactory());
-	}
-
-	//@Bean
-	public AmqpTemplate rabbitTemplate(ConnectionFactory connectionFactory) {
-		final RabbitTemplate rabbitTemplate = new RabbitTemplate(connectionFactory);
-		rabbitTemplate.setDefaultReceiveQueue(queueName);
-		rabbitTemplate.setMessageConverter(jsonMessageConverter());
-		rabbitTemplate.setReplyAddress(queue().getName());
-		rabbitTemplate.setUseDirectReplyToContainer(false);
-		return rabbitTemplate;
+	public RabbitTemplate rabbitTemplate() {
+		return new RabbitTemplate(connectionFactory());
 	}
 
 	@Bean
-	public SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory() {
-		final SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
-		factory.setConnectionFactory(connectionFactory());
-		factory.setMessageConverter(jsonMessageConverter());
-		factory.setConcurrentConsumers(concurrentConsumers);
-		factory.setMaxConcurrentConsumers(maxConcurrentConsumers);
-		return factory;
+	public RabbitAdmin rabbitAdmin() {
+		RabbitAdmin rabbitAdmin = new RabbitAdmin(connectionFactory());
+		rabbitAdmin.declareExchange(exchange());
+		return rabbitAdmin;
 	}
 }

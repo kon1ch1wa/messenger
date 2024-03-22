@@ -1,17 +1,16 @@
 package ru.shutoff.messenger.service;
 
-import jakarta.servlet.http.Cookie;
-import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import java.util.Objects;
+
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+
+import jakarta.servlet.http.Cookie;
+import lombok.RequiredArgsConstructor;
 import ru.shutoff.messenger.exception.InvalidTokenException;
 import ru.shutoff.messenger.model.User;
 import ru.shutoff.messenger.repository.UserInfoRepo;
 import ru.shutoff.messenger.security.JwtUtils;
-
-import java.util.Base64;
-import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -24,7 +23,7 @@ public class UpdateCredsService {
 		if (!Objects.equals(password, confirmPassword)) {
 			throw new InvalidTokenException("Passwords are not equal");
 		}
-		User user = userInfoRepo.getPrimary(key);
+		User user = userInfoRepo.getByUnqiueToken(key);
 		user.setToken(null);
 		user.setPassword(passwordEncoder.encode(password));
 		userInfoRepo.update(user);

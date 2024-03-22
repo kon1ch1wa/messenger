@@ -2,6 +2,7 @@ HELP.md
 target/
 .mvn/
 .idea
+.vscode/
 *.iml
 build/
 cleaning.sh

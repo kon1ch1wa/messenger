@@ -4,9 +4,6 @@ import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
 import lombok.RequiredArgsConstructor;
 
-import java.util.stream.IntStream;
-import java.util.stream.Stream;
-
 @RequiredArgsConstructor
 public class PasswordValidator implements ConstraintValidator<PasswordConstraint, String> {
 	private static final String pattern = "(?=.*\\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[~`!@#$%^&*()\\-_+=\\[\\]{}|',.<>/?])(?!.*[\"\\\\])(.{6,})";

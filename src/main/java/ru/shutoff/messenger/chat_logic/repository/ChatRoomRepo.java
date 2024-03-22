@@ -1,12 +1,18 @@
 package ru.shutoff.messenger.chat_logic.repository;
 
+import java.util.UUID;
+
 import org.springframework.stereotype.Repository;
+
 import ru.shutoff.messenger.chat_logic.model.ChatRoom;
 
 @Repository
 public interface ChatRoomRepo {
 	void save(ChatRoom chatRoom);
 
-	ChatRoom getById(String id);
-	ChatRoom getByParticipants(String participantAttribute1, String participantAttribute2);
+	void update(ChatRoom chatRoom);
+
+	void delete(UUID id);
+
+	ChatRoom getById(UUID id);
 }
