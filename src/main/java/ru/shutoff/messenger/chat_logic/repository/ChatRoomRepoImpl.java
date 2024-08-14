@@ -17,13 +17,14 @@ import ru.shutoff.messenger.chat_logic.model.ChatRoom;
 @RequiredArgsConstructor
 public class ChatRoomRepoImpl implements ChatRoomRepo {
 	private final JdbcTemplate jdbcTemplate;
-	private final String SQL_SAVE_CHATROOM = "insert into chat_rooms(id, name, description) values(?, ?, ?)";
+	private final String SQL_SAVE_CHATROOM = "insert into chat_rooms(id, creator_id, name, description) values(?, ?, ?, ?)";
 	private final String SQL_UPDATE_CHATROOM = "update chat_rooms set name=coalesce(?, name) description=coalesce(?, description) where id=?";
 	private final String SQL_DELETE_CHATROOM = "delete from chat_rooms where id=?";
 	private final String SQL_GET_BY_ID = "select * from chat_rooms where id=?";
 	
 	private final @NonNull RowMapper<ChatRoom> chatRoomMapper = (rs, rowNum) -> new ChatRoom(
 		rs.getObject("id", UUID.class),
+		rs.getObject("creator_id", UUID.class),
 		rs.getString("name"),
 		rs.getString("description")
 	);
@@ -31,7 +32,7 @@ public class ChatRoomRepoImpl implements ChatRoomRepo {
 	@Override
 	public void save(ChatRoom chatRoom) {
 		try {
-			jdbcTemplate.update(SQL_SAVE_CHATROOM, chatRoom.getChatRoomId(), chatRoom.getName(), chatRoom.getDescription());
+			jdbcTemplate.update(SQL_SAVE_CHATROOM, chatRoom.getChatRoomId(), chatRoom.getCreatorId(), chatRoom.getName(), chatRoom.getDescription());
 		} catch (DataAccessException ex) {
 			throw new DuplicateKeyException("Chat room with this id already exists");
 		}

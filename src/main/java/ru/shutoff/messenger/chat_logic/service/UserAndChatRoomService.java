@@ -15,7 +15,19 @@ public class UserAndChatRoomService {
     private final @NonNull UserAndChatRoomRepo userAndChatRoomRepo;
 
     public void bindUsersToChatRoom(List<UUID> userIds, UUID chatRoomId) {
-        userAndChatRoomRepo.bindUsersToChatRoom(null, null);
+        userAndChatRoomRepo.bindUsersToChatRoom(userIds, chatRoomId);
+    }
+
+    public void bindUserToChatRoom(UUID userId, UUID chatRoomId) {
+        userAndChatRoomRepo.bindUserToChatRoom(userId, chatRoomId);
+    }
+
+    public void unbindUserFromChatRoom(UUID userId, UUID chatRoomId) {
+        userAndChatRoomRepo.unbindUserFromChatRoom(userId, chatRoomId);
+    }
+
+    public List<UUID> getUsersByChatRoom(UUID chatRoomId) {
+        return userAndChatRoomRepo.getUsersByChatRoom(chatRoomId);
     }
 
     public void deleteChatRoom(UUID chatRoomId) {
