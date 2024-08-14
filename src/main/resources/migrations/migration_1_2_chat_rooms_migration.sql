@@ -4,9 +4,11 @@
 
 CREATE TABLE chat_rooms
 (
-    id varchar(64) PRIMARY KEY,
+    id uuid PRIMARY KEY,
+    creator_id uuid,
     name varchar(64),
-    description TEXT
+    description TEXT,
+    FOREIGN KEY (creator_id) REFERENCES users(id)
 );
 
 --rollback DROP TABLE chat_rooms;

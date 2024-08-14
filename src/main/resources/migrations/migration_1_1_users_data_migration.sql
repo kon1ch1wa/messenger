@@ -4,7 +4,7 @@
 
 CREATE TABLE users
 (
-    id varchar(32) PRIMARY KEY,
+    id uuid PRIMARY KEY,
     email varchar(50) NOT NULL UNIQUE,
     login varchar(50) NOT NULL UNIQUE,
     name varchar(50) NOT NULL,
