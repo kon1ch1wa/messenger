@@ -1,7 +1,5 @@
 package ru.shutoff.messenger.chat_logic.websocket;
 
-import java.util.logging.Logger;
-
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.lang.NonNull;
@@ -16,8 +14,6 @@ import lombok.RequiredArgsConstructor;
 @EnableWebSocketMessageBroker
 @RequiredArgsConstructor
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
-	private final Logger logger = Logger.getGlobal();
-
 	@Value("${spring.rabbitmq.host}")
 	private String host;
 
@@ -32,10 +28,6 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
 	@Override
 	public void configureMessageBroker(@NonNull MessageBrokerRegistry registry) {
-		logger.info(host);
-		logger.info(String.valueOf(port));
-		logger.info(username);
-		logger.info(password);
 		registry
 			.enableStompBrokerRelay("/exchange", "/queue")
 			.setRelayHost(host)
@@ -50,6 +42,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 	@Override
 	public void registerStompEndpoints(@NonNull StompEndpointRegistry registry) {
 		registry
-			.addEndpoint("/websocket");
+			.addEndpoint("/websocket")
+			.setAllowedOriginPatterns("*");
 	}
 }
