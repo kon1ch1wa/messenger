@@ -10,6 +10,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.web.util.WebUtils;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -32,7 +33,7 @@ public class JwtTokenFilter extends OncePerRequestFilter {
 	) throws ServletException, IOException {
 		try {
 			String jwt = null;
-			Cookie jwtCookie = jwtUtils.getJwtCookieFromRequest(request);
+			Cookie jwtCookie = WebUtils.getCookie(request, JwtUtils.JwtCookieName);
 			if (jwtCookie != null) jwt = jwtCookie.getValue();
 			if (jwt != null && jwtUtils.isValidJwtToken(jwt)) {
 				String username = jwtUtils.getUsernameFromJwtToken(jwt);

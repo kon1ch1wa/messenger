@@ -1,6 +1,7 @@
 package ru.shutoff.messenger.controller;
 
 import org.springframework.data.util.Pair;
+import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -46,10 +47,10 @@ public class AuthApiController {
     @PatchMapping("/user")
     public User updateUser(
             @Valid @RequestBody UpdateInfoRequest dto,
+            @CookieValue(name = JwtUtils.JwtCookieName, required = true) Cookie cookie,
             HttpServletRequest request,
             HttpServletResponse response
     ) {
-        Cookie cookie = jwtUtils.getJwtCookieFromRequest(request);
         User user = service.updateUser(cookie.getValue(), dto.description(), dto.phoneNumber(), dto.urlTag());
         jwtUtils.refreshJwtToken(cookie);
         response.addCookie(cookie);
@@ -57,8 +58,7 @@ public class AuthApiController {
     }
 
     @GetMapping("/logout")
-    public void logout(HttpServletRequest request, HttpServletResponse response) {
-        Cookie cookie = jwtUtils.getJwtCookieFromRequest(request);
+    public void logout(@CookieValue(name = JwtUtils.JwtCookieName, required = true) Cookie cookie, HttpServletResponse response) {
         service.logout(cookie);
         response.addCookie(cookie);
     }

@@ -1,7 +1,25 @@
 package ru.shutoff.messenger.controller;
 
-import jakarta.servlet.http.Cookie;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static ru.shutoff.messenger.setup.SetupMethods.AUTH_API_LOGIN_URL;
+import static ru.shutoff.messenger.setup.SetupMethods.AUTH_API_LOGOUT_URL;
+import static ru.shutoff.messenger.setup.SetupMethods.LOGIN;
+import static ru.shutoff.messenger.setup.SetupMethods.PASS;
+import static ru.shutoff.messenger.setup.SetupMethods.PING_URL;
+import static ru.shutoff.messenger.setup.SetupMethods.activateUser;
+import static ru.shutoff.messenger.setup.SetupMethods.rabbitImageName;
+import static ru.shutoff.messenger.setup.SetupMethods.registerUser;
+
+import java.util.concurrent.TimeUnit;
+
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -14,39 +32,60 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.jdbc.JdbcTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.containers.RabbitMQContainer;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
+
+import jakarta.servlet.http.Cookie;
 import ru.shutoff.messenger.MessengerApplication;
 import ru.shutoff.messenger.dto.LoginRequest;
 import ru.shutoff.messenger.setup.SetupMethods;
 import ru.shutoff.messenger.setup.TestConfiguration;
-
-import java.util.concurrent.TimeUnit;
-
-import static ru.shutoff.messenger.setup.SetupMethods.*;
-import static org.junit.jupiter.api.Assertions.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @Testcontainers
 @SpringBootTest(classes = MessengerApplication.class)
 @Import(TestConfiguration.class)
 @AutoConfigureMockMvc
 public class JwtTokenIntegrationTests {
-	@Container
-	private static final PostgreSQLContainer<?> container = SetupMethods.container;
+	public static final PostgreSQLContainer<?> postgresContainer = new PostgreSQLContainer<>(SetupMethods.postgresImageName)
+			.withUsername("admin")
+			.withPassword("admin")
+			.withDatabaseName("messenger_db");
+
+	public static final RabbitMQContainer rabbitMqContainer = new RabbitMQContainer(rabbitImageName)
+			.withPluginsEnabled("rabbitmq_stomp", "rabbitmq_web_stomp")
+			.withEnv("RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS", "-rabbit disk_free_limit 2147483648")
+			.withEnv("NODENAME", "rabbitmq@rabbitmq")
+			.withEnv("HOSTNAME", "rabbitmq")
+			.withExposedPorts(5672, 15672, 61613);
+
+	@BeforeAll
+	static void beforeAll() {
+		postgresContainer.start();
+		rabbitMqContainer.start();
+	}
+
+	@AfterAll
+	static void afterAll() {
+		postgresContainer.stop();
+		postgresContainer.close();
+		rabbitMqContainer.stop();
+		rabbitMqContainer.close();
+	}
 
 	@DynamicPropertySource
 	static void registerProps(DynamicPropertyRegistry registry) {
-		registry.add("spring.datasource.url", container::getJdbcUrl);
-		registry.add("spring.datasource.username", container::getUsername);
-		registry.add("spring.datasource.password", container::getPassword);
-		registry.add("spring.liquibase.url", container::getJdbcUrl);
-		registry.add("spring.liquibase.user", container::getUsername);
-		registry.add("spring.liquibase.password", container::getPassword);
-		registry.add("jwt.expiration_time", () -> "2000");
+		registry.add("spring.datasource.url", postgresContainer::getJdbcUrl);
+		registry.add("spring.datasource.username", postgresContainer::getUsername);
+		registry.add("spring.datasource.password", postgresContainer::getPassword);
+		registry.add("spring.liquibase.url", postgresContainer::getJdbcUrl);
+		registry.add("spring.liquibase.user", postgresContainer::getUsername);
+		registry.add("spring.liquibase.password", postgresContainer::getPassword);
+		registry.add("spring.rabbitmq.username", rabbitMqContainer::getAdminUsername);
+		registry.add("spring.rabbitmq.password", rabbitMqContainer::getAdminPassword);
+		registry.add("spring.rabbitmq.port", () -> rabbitMqContainer.getMappedPort(5672));
+		registry.add("spring.rabbitmq.stomp-port", () -> rabbitMqContainer.getMappedPort(61613));
+		registry.add("spring.rabbitmq.host", () -> "localhost");
 	}
 
 	@Autowired
@@ -63,7 +102,7 @@ public class JwtTokenIntegrationTests {
 
 	@Test
 	void runningContainerTest() {
-		assertTrue(container.isRunning());
+		assertTrue(postgresContainer.isRunning());
 	}
 
 	@Test

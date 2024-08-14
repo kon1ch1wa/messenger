@@ -1,7 +1,27 @@
 package ru.shutoff.messenger.controller;
 
-import jakarta.servlet.http.Cookie;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static ru.shutoff.messenger.setup.SetupMethods.CHECK_LOGIN_URL;
+import static ru.shutoff.messenger.setup.SetupMethods.EMAIL;
+import static ru.shutoff.messenger.setup.SetupMethods.FORGOT_LOGIN_URL;
+import static ru.shutoff.messenger.setup.SetupMethods.FORGOT_PASSWORD_URL;
+import static ru.shutoff.messenger.setup.SetupMethods.LOGIN;
+import static ru.shutoff.messenger.setup.SetupMethods.PASS;
+import static ru.shutoff.messenger.setup.SetupMethods.UPDATE_PASSWORD_URL;
+import static ru.shutoff.messenger.setup.SetupMethods.activateUser;
+import static ru.shutoff.messenger.setup.SetupMethods.registerUser;
+
+import java.util.Base64;
+
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -14,9 +34,12 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.jdbc.JdbcTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.containers.RabbitMQContainer;
+import org.testcontainers.containers.startupcheck.OneShotStartupCheckStrategy;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
+
+import jakarta.servlet.http.Cookie;
 import ru.shutoff.messenger.MessengerApplication;
 import ru.shutoff.messenger.dto.RestorePasswordNoAccessDto;
 import ru.shutoff.messenger.dto.RestorePasswordWithAccessDto;
@@ -24,30 +47,47 @@ import ru.shutoff.messenger.model.User;
 import ru.shutoff.messenger.setup.SetupMethods;
 import ru.shutoff.messenger.setup.TestConfiguration;
 
-import java.util.Base64;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-import static ru.shutoff.messenger.setup.SetupMethods.*;
-
 @Testcontainers
 @SpringBootTest(classes = MessengerApplication.class)
 @Import(TestConfiguration.class)
 @AutoConfigureMockMvc
 public class ForgotAndUpdateCredsIntegrationTests {
-	@Container
-	private static final PostgreSQLContainer<?> container = SetupMethods.container;
+	public static final PostgreSQLContainer<?> postgresContainer = new PostgreSQLContainer<>(SetupMethods.postgresImageName)
+			.withUsername("admin")
+			.withPassword("admin")
+			.withDatabaseName("messenger_db");
+
+	public static final RabbitMQContainer rabbitMqContainer = new RabbitMQContainer(SetupMethods.rabbitImageName)
+			.withExposedPorts(5672, 15672, 61613);
+
+	@BeforeAll
+	static void beforeAll() {
+		postgresContainer.start();
+		rabbitMqContainer.setStartupCheckStrategy(new OneShotStartupCheckStrategy());
+		rabbitMqContainer.start();
+	}
+
+	@AfterAll
+	static void afterAll() {
+		postgresContainer.stop();
+		postgresContainer.close();
+		rabbitMqContainer.stop();
+		rabbitMqContainer.close();
+	}
 
 	@DynamicPropertySource
 	static void registerProps(DynamicPropertyRegistry registry) {
-		registry.add("spring.datasource.url", container::getJdbcUrl);
-		registry.add("spring.datasource.username", container::getUsername);
-		registry.add("spring.datasource.password", container::getPassword);
-		registry.add("spring.liquibase.url", container::getJdbcUrl);
-		registry.add("spring.liquibase.user", container::getUsername);
-		registry.add("spring.liquibase.password", container::getPassword);
-		container.start();
+		registry.add("spring.datasource.url", postgresContainer::getJdbcUrl);
+		registry.add("spring.datasource.username", postgresContainer::getUsername);
+		registry.add("spring.datasource.password", postgresContainer::getPassword);
+		registry.add("spring.liquibase.url", postgresContainer::getJdbcUrl);
+		registry.add("spring.liquibase.user", postgresContainer::getUsername);
+		registry.add("spring.liquibase.password", postgresContainer::getPassword);
+		registry.add("spring.rabbitmq.username", rabbitMqContainer::getAdminUsername);
+		registry.add("spring.rabbitmq.password", rabbitMqContainer::getAdminPassword);
+		registry.add("spring.rabbitmq.port", () -> rabbitMqContainer.getMappedPort(5672));
+		registry.add("spring.rabbitmq.stomp-port", () -> rabbitMqContainer.getMappedPort(61613));
+		registry.add("spring.rabbitmq.host", () -> "localhost");
 	}
 
 	@Autowired
@@ -63,7 +103,8 @@ public class ForgotAndUpdateCredsIntegrationTests {
 
 	@Test
 	void runningContainerTest() {
-		assertTrue(container.isRunning());
+		assertTrue(postgresContainer.isRunning());
+		assertTrue(rabbitMqContainer.isRunning());
 	}
 
 	@Test

@@ -3,6 +3,7 @@ package ru.shutoff.messenger.service;
 import java.util.UUID;
 
 import org.springframework.data.util.Pair;
+import org.springframework.mail.MailException;
 import org.springframework.mail.MailSender;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -16,6 +17,7 @@ import org.springframework.stereotype.Service;
 
 import jakarta.servlet.http.Cookie;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import ru.shutoff.messenger.exception.NotAuthorizedException;
 import ru.shutoff.messenger.model.User;
 import ru.shutoff.messenger.repository.UserInfoRepo;
@@ -23,6 +25,7 @@ import ru.shutoff.messenger.security.JwtUtils;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AuthApiService {
 	private final UserInfoRepo userInfoRepo;
 	private final MailSender mailSender;
@@ -46,6 +49,7 @@ public class AuthApiService {
 				.isActivated(false)
 				.token(token)
 				.build();
+		log.debug("Save user in repository: {}", user.toString());
 		userInfoRepo.save(user);
 		try {
 			SimpleMailMessage message = new SimpleMailMessage();
@@ -54,8 +58,9 @@ public class AuthApiService {
 			message.setSubject("Confirmation Email on MessengerApp");
 			message.setText(String.format(MESSAGE_MAIL, token));
 			mailSender.send(message);
-		} catch (Exception ex) {
-			System.out.println(ex.getMessage());
+			log.debug("Sending Message to user: {}", user.toString());
+		} catch (MailException ex) {
+			log.error("Could not send message: {}", ex.getMessage());
 		}
 		return user;
 	}
@@ -67,10 +72,13 @@ public class AuthApiService {
 		String userPassword = user.getPassword();
 		user.setPassword(passwordEncoder.encode(userPassword));
 		userInfoRepo.update(user);
-		Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(
+		log.debug("User activated: {}", user.toString());
+		Authentication authentication = authenticationManager.authenticate(
+			new UsernamePasswordAuthenticationToken(
 				user.getLogin(),
 				userPassword
-		));
+			)
+		);
 		SecurityContextHolder.getContext().setAuthentication(authentication);
 		String jwtToken = jwtUtils.generateJwtToken(authentication, user.getLogin(), user.getPassword());
 		if (jwtToken == null) {
@@ -102,6 +110,7 @@ public class AuthApiService {
 					)
 			);
 			SecurityContextHolder.getContext().setAuthentication(authentication);
+			log.debug("User authenticated: {}", user.toString());
 			return jwtUtils.generateJwtToken(authentication, user.getLogin(), user.getPassword());
 		} catch (UsernameNotFoundException | BadCredentialsException ex) {
 			throw new NotAuthorizedException("Not authorized: Bad credentials");

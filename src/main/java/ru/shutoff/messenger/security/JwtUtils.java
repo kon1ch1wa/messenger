@@ -17,12 +17,13 @@ import io.jsonwebtoken.UnsupportedJwtException;
 import io.jsonwebtoken.io.Encoders;
 import io.jsonwebtoken.security.Keys;
 import jakarta.servlet.http.Cookie;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import ru.shutoff.messenger.exception.NotAuthorizedException;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class JwtUtils {
 	@Value("${jwt.expiration_time}")
 	private int JwtExpiration;
@@ -30,12 +31,12 @@ public class JwtUtils {
 	@Value("${jwt.secret}")
 	private String JwtSecretKey;
 
-	@Value("${jwt.cookie_name}")
-	private String JwtCookieName;
+	public static final String JwtCookieName = "JwtToken";
 
 	public String generateJwtToken(Authentication authentication, String username, String password) {
 		UserDetails userDetails = new User(username, password, authentication.getAuthorities());
-		return Jwts.builder()
+		return Jwts
+				.builder()
 				.setSubject(userDetails.getUsername())
 				.setIssuedAt(new Date())
 				.setExpiration(new Date(new Date().getTime() + JwtExpiration))
@@ -45,14 +46,20 @@ public class JwtUtils {
 
 	public void refreshJwtToken(Cookie jwtCookie) {
 		String jwtToken = jwtCookie.getValue();
-		Claims claims = Jwts.parserBuilder().setSigningKey(key()).build().parseClaimsJws(jwtToken).getBody()
+		log.debug ("jwtToken: {}", jwtToken);
+		Claims claims = Jwts
+				.parserBuilder()
+				.setSigningKey(key())
+				.build()
+				.parseClaimsJws(jwtToken)
+				.getBody()
 				.setIssuedAt(new Date())
 				.setExpiration(new Date(new Date().getTime() + JwtExpiration));
 		jwtCookie.setValue(Jwts.builder().setClaims(claims).signWith(key()).compact());
 	}
 
 	public void invalidateJwtToken(Cookie jwtCookie) {
-		jwtCookie.setPath("/");
+		jwtCookie.setPath("/invalid");
 		jwtCookie.setValue("");
 		jwtCookie.setMaxAge(0);
 	}
@@ -62,8 +69,13 @@ public class JwtUtils {
 	}
 
 	public String getUsernameFromJwtToken(String jwtToken) {
-		return Jwts.parserBuilder().setSigningKey(key()).build().parseClaimsJws(jwtToken)
-				.getBody().getSubject();
+		return Jwts
+				.parserBuilder()
+				.setSigningKey(key())
+				.build()
+				.parseClaimsJws(jwtToken)
+				.getBody()
+				.getSubject();
 	}
 
 	public boolean isValidJwtToken(String jwtToken) {
@@ -83,24 +95,13 @@ public class JwtUtils {
 		throw new NotAuthorizedException(msg);
 	}
 
-	public Cookie getJwtCookieFromRequest(HttpServletRequest request) {
-		Cookie jwtCookie = null;
-		Cookie[] cookieAuth = request.getCookies();
-		if (cookieAuth != null) {
-			for (Cookie cookie: cookieAuth) {
-				if (cookie.getName().equals(JwtCookieName)) {
-					jwtCookie = cookie;
-					break;
-				}
-			}
-		}
-		return jwtCookie;
-	}
-
 	public Cookie formCookie(String jwt) {
 		Cookie jwtCookie = new Cookie(JwtCookieName, jwt);
 		jwtCookie.setHttpOnly(true);
 		jwtCookie.setSecure(true);
+		jwtCookie.setPath("/");
+		jwtCookie.setMaxAge(JwtExpiration);
+		log.debug("Value: {}", jwtCookie.getValue());
 		return jwtCookie;
 	}
 }

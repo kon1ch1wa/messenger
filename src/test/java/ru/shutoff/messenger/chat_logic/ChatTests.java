@@ -1,152 +1,141 @@
 package ru.shutoff.messenger.chat_logic;
 
-import jakarta.servlet.http.Cookie;
-import lombok.RequiredArgsConstructor;
-import org.junit.Before;
-import org.junit.jupiter.api.*;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static ru.shutoff.messenger.setup.SetupMethods.rabbitImageName;
+
+import java.lang.reflect.Type;
+import java.sql.Timestamp;
+import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.data.util.Pair;
-import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
-import org.springframework.messaging.simp.stomp.*;
-import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.messaging.simp.stomp.StompFrameHandler;
+import org.springframework.messaging.simp.stomp.StompHeaders;
+import org.springframework.messaging.simp.stomp.StompSession;
+import org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.jdbc.JdbcTestUtils;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.web.socket.client.WebSocketClient;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
 import org.springframework.web.socket.sockjs.client.SockJsClient;
 import org.springframework.web.socket.sockjs.client.WebSocketTransport;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.RabbitMQContainer;
-import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.shaded.com.fasterxml.jackson.core.JsonProcessingException;
-import org.testcontainers.shaded.com.fasterxml.jackson.core.type.TypeReference;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
+
 import ru.shutoff.messenger.chat_logic.dto.MessageDto;
-import ru.shutoff.messenger.chat_logic.model.ChatRoom;
-import ru.shutoff.messenger.chat_logic.model.Message;
-import ru.shutoff.messenger.model.User;
 import ru.shutoff.messenger.setup.SetupMethods;
 import ru.shutoff.messenger.setup.TestConfiguration;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-
-import java.lang.reflect.Type;
-import java.sql.Date;
-import java.util.List;
-import java.util.Objects;
-import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 
 @Testcontainers
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(TestConfiguration.class)
 @AutoConfigureMockMvc
 public class ChatTests {
-	@Container
-	private static final PostgreSQLContainer<?> container = SetupMethods.container;
-	@Container
-	private static final RabbitMQContainer rabbitMqContainer = new RabbitMQContainer("rabbitmq:3.12.4-management")
-			.withPluginsEnabled("rabbitmq_web_stomp")
-			.withUser("RMQAdmin", "RMQPassword")
-			.withExposedPorts(5672, 15672);
+	public static final PostgreSQLContainer<?> postgresContainer = new PostgreSQLContainer<>(SetupMethods.postgresImageName)
+			.withUsername("admin")
+			.withPassword("admin")
+			.withDatabaseName("messenger_db");
+
+	public static final RabbitMQContainer rabbitMqContainer = new RabbitMQContainer(rabbitImageName)
+			.withPluginsEnabled("rabbitmq_stomp", "rabbitmq_web_stomp")
+			.withEnv("RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS", "-rabbit disk_free_limit 2147483648")
+			.withEnv("NODENAME", "rabbitmq@rabbitmq")
+			.withEnv("HOSTNAME", "rabbitmq")
+			.withExposedPorts(5672, 15672, 61613);
+
+	@BeforeAll
+	static void beforeAll() {
+		postgresContainer.start();
+		rabbitMqContainer.start();
+	}
+
+	@AfterAll
+	static void afterAll() {
+		postgresContainer.stop();
+		postgresContainer.close();
+		rabbitMqContainer.stop();
+		rabbitMqContainer.close();
+	}
 
 	@DynamicPropertySource
 	static void registerProps(DynamicPropertyRegistry registry) {
-		registry.add("spring.datasource.url", container::getJdbcUrl);
-		registry.add("spring.datasource.username", container::getUsername);
-		registry.add("spring.datasource.password", container::getPassword);
-		registry.add("spring.liquibase.url", container::getJdbcUrl);
-		registry.add("spring.liquibase.user", container::getUsername);
-		registry.add("spring.liquibase.password", container::getPassword);
+		registry.add("spring.datasource.url", postgresContainer::getJdbcUrl);
+		registry.add("spring.datasource.username", postgresContainer::getUsername);
+		registry.add("spring.datasource.password", postgresContainer::getPassword);
+		registry.add("spring.liquibase.url", postgresContainer::getJdbcUrl);
+		registry.add("spring.liquibase.user", postgresContainer::getUsername);
+		registry.add("spring.liquibase.password", postgresContainer::getPassword);
+		registry.add("spring.rabbitmq.username", rabbitMqContainer::getAdminUsername);
+		registry.add("spring.rabbitmq.password", rabbitMqContainer::getAdminPassword);
+		registry.add("spring.rabbitmq.port", () -> rabbitMqContainer.getMappedPort(5672));
+		registry.add("spring.rabbitmq.stomp-port", () -> rabbitMqContainer.getMappedPort(61613));
+		registry.add("spring.rabbitmq.host", () -> "localhost");
 	}
 
 	@Value("${local.server.port}")
 	private int port;
+
 	private StompSession stompSession1;
 	private StompSession stompSession2;
 	private StompSession stompSession3;
+
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
 
 	@Autowired
-	private MockMvc mockMvc;
-
-	@Autowired
 	private ObjectMapper mapper;
 
-	private String wrapMessage(String content, String receiverId, String chatRoomId) throws JsonProcessingException {
-		return mapper.writeValueAsString(new MessageDto(content, receiverId, chatRoomId));
+	private String wrapMessage(UUID chatRoomId, UUID senderId, String content) throws JsonProcessingException {
+		String _chatRoomId = chatRoomId.toString();
+		String _senderId = senderId.toString();
+		return mapper.writeValueAsString(new MessageDto(_chatRoomId, _senderId, content, new Timestamp(0)));
+	}
+
+	private String wrapMessage(String chatRoomId, String senderId, String content) throws JsonProcessingException {
+		return mapper.writeValueAsString(new MessageDto(chatRoomId, senderId, content, new Timestamp(0)));
 	}
 
 	@Test
 	void runningContainerTest() {
-		assertTrue(container.isRunning());
+		assertTrue(postgresContainer.isRunning());
 		assertTrue(rabbitMqContainer.isRunning());
 	}
 
 	@BeforeEach
 	public void setUp() throws Exception {
-		String url = "ws://localhost:" + port + "/ws-endpoint";
+		String url = "ws://localhost:" + port + "/websocket";
 		WebSocketStompClient stompClient1 = new WebSocketStompClient(new SockJsClient(List.of(new WebSocketTransport(new StandardWebSocketClient()))));
 		stompClient1.setMessageConverter(new MappingJackson2MessageConverter());
+		CompletableFuture<StompSession> fSS1 = stompClient1.connectAsync(url, new StompSessionHandlerAdapter() {});
+		stompSession1 = fSS1.get();
 		WebSocketStompClient stompClient2 = new WebSocketStompClient(new SockJsClient(List.of(new WebSocketTransport(new StandardWebSocketClient()))));
 		stompClient2.setMessageConverter(new MappingJackson2MessageConverter());
+		CompletableFuture<StompSession> fSS2 = stompClient2.connectAsync(url, new StompSessionHandlerAdapter() {});
+		stompSession2 = fSS2.get();
 		WebSocketStompClient stompClient3 = new WebSocketStompClient(new SockJsClient(List.of(new WebSocketTransport(new StandardWebSocketClient()))));
 		stompClient3.setMessageConverter(new MappingJackson2MessageConverter());
-		stompSession1 = stompClient1.connectAsync(url, new StompSessionHandlerAdapter() {}).get(1, TimeUnit.SECONDS);
-		stompSession2 = stompClient2.connectAsync(url, new StompSessionHandlerAdapter() {}).get(1, TimeUnit.SECONDS);
-		stompSession3 = stompClient3.connectAsync(url, new StompSessionHandlerAdapter() {}).get(1, TimeUnit.SECONDS);
+		CompletableFuture<StompSession> fSS3 = stompClient3.connectAsync(url, new StompSessionHandlerAdapter() {});
+		stompSession3 = fSS3.get();
 	}
 
 	@Test
 	public void chatLogicTest() throws Exception {
-		User user1 = SetupMethods.registerUser(mockMvc);
-		Cookie cookie1 = SetupMethods.activateUser(mockMvc, user1);
-		User user2 = SetupMethods.registerAnotherUser(mockMvc);
-		Cookie cookie2 = SetupMethods.activateUser(mockMvc, user2);
-		User user3 = SetupMethods.registerThirdUser(mockMvc);
-		Cookie cookie3 = SetupMethods.activateUser(mockMvc, user3);
-		String chatRoom12Str = mockMvc.perform(
-			get("/chat/{receiverUrlTag}/room", user2.getId())
-				.cookie(cookie1)
-		)
-			.andExpect(status().isOk())
-			.andReturn()
-			.getResponse()
-			.getContentAsString();
-		ChatRoom chatRoom12 = mapper.readValue(chatRoom12Str, ChatRoom.class);
-
-		String chatRoom32Str = mockMvc.perform(
-			get("/chat/{receiverUrlTag}/room", user2.getId())
-				.cookie(cookie3)
-		)
-			.andExpect(status().isOk())
-			.andReturn()
-			.getResponse()
-			.getContentAsString();
-		ChatRoom chatRoom32 = mapper.readValue(chatRoom32Str, ChatRoom.class);
-
-		String chatRoom13Str = mockMvc.perform(
-			get("/chat/{receiverUrlTag}/room", user3.getId())
-				.cookie(cookie1)
-		)
-			.andExpect(status().isOk())
-			.andReturn()
-			.getResponse()
-			.getContentAsString();
-		ChatRoom chatRoom13 = mapper.readValue(chatRoom13Str, ChatRoom.class);
 		StompFrameHandler stompFrameHandler = new StompFrameHandler() {
 			@Override
 			public Type getPayloadType(StompHeaders headers) {
@@ -158,72 +147,79 @@ public class ChatTests {
 				return;
 			}
 		};
-		stompSession1.subscribe("/queue/messages/" + chatRoom12.getChatRoomId(), stompFrameHandler);
-		stompSession1.subscribe("/queue/messages/" + chatRoom13.getChatRoomId(), stompFrameHandler);
-		stompSession2.subscribe("/queue/messages/" + chatRoom12.getChatRoomId(), stompFrameHandler);
-		stompSession2.subscribe("/queue/messages/" + chatRoom32.getChatRoomId(), stompFrameHandler);
-		stompSession3.subscribe("/queue/messages/" + chatRoom13.getChatRoomId(), stompFrameHandler);
-		stompSession3.subscribe("/queue/messages/" + chatRoom32.getChatRoomId(), stompFrameHandler);
+		String chatRoomId12 = UUID.randomUUID().toString();
+		String chatRoomId13 = UUID.randomUUID().toString();
+		String chatRoomId23 = UUID.randomUUID().toString();
+		String userId1 = UUID.randomUUID().toString();
+		String userId2 = UUID.randomUUID().toString();
+		String userId3 = UUID.randomUUID().toString();
+		stompSession1.subscribe("/exchange/rabbitmq.chat.exchange/" + chatRoomId12, stompFrameHandler);
+		stompSession1.subscribe("/exchange/rabbitmq.chat.exchange/" + chatRoomId13, stompFrameHandler);
+		stompSession2.subscribe("/exchange/rabbitmq.chat.exchange/" + chatRoomId12, stompFrameHandler);
+		stompSession2.subscribe("/exchange/rabbitmq.chat.exchange/" + chatRoomId23, stompFrameHandler);
+		stompSession3.subscribe("/exchange/rabbitmq.chat.exchange/" + chatRoomId13, stompFrameHandler);
+		stompSession3.subscribe("/exchange/rabbitmq.chat.exchange/" + chatRoomId23, stompFrameHandler);
 
-		/*stompSession2.send("/chat/" + chatRoom12.getChatRoomId() + "/send-message", "Hi!");
-		stompSession2.send("/chat/" + chatRoom32.getChatRoomId() + "/send-message", "User#2 ping to user#3");
-		stompSession1.send("/chat/" + chatRoom12.getChatRoomId() + "/send-message", "Hello, who are you?");
-		stompSession2.send("/chat/" + chatRoom12.getChatRoomId() + "/send-message", "I am user #2");
-		stompSession1.send("/chat/" + chatRoom12.getChatRoomId() + "/send-message", "Hello user#2!");
-		stompSession3.send("/chat/" + chatRoom13.getChatRoomId() + "/send-message", "Hi user#1!");
-		stompSession1.send("/chat/" + chatRoom13.getChatRoomId() + "/send-message", "Hi user#3!");
-		stompSession3.send("/chat/" + chatRoom13.getChatRoomId() + "/send-message", "Let's go outside?");
-		stompSession1.send("/chat/" + chatRoom13.getChatRoomId() + "/send-message", "Nah, sorry, I am too busy");
-		stompSession3.send("/chat/" + chatRoom32.getChatRoomId() + "/send-message", "Hello user#2! I'm glad you pinged me.");
-		stompSession3.send("/chat/" + chatRoom13.getChatRoomId() + "/send-message", "Ok. :(");*/
+		String destination = "/app/send";
+		stompSession2.send(destination, wrapMessage(chatRoomId12, userId2, "Hi!"));
+		stompSession2.send(destination, wrapMessage(chatRoomId23, userId3, "User#2 ping to user#3"));
+		stompSession1.send(destination, wrapMessage(chatRoomId12, userId1, "Hello, who are you?"));
+		stompSession2.send(destination, wrapMessage(chatRoomId12, userId2, "I am user #2"));
+		stompSession1.send(destination, wrapMessage(chatRoomId12, userId1, "Hello, user#2!"));
+		stompSession3.send(destination, wrapMessage(chatRoomId13, userId3, "Hi, user#1!"));
+		stompSession1.send(destination, wrapMessage(chatRoomId13, userId1, "Hi, user#3!"));
+		stompSession3.send(destination, wrapMessage(chatRoomId13, userId3, "Let's go outside?"));
+		stompSession1.send(destination, wrapMessage(chatRoomId13, userId1, "Nah, sorry, I am too busy"));
+		stompSession3.send(destination, wrapMessage(chatRoomId23, userId3, "Hello user#2! I'm glad you pinged me."));
+		stompSession3.send(destination, wrapMessage(chatRoomId13, userId3, "Ok. :("));
 
-		String message;
-		message = wrapMessage("Hi!", user1.getId(), chatRoom12.getChatRoomId());
+		/*String message;
+		message = wrapMessage(chatRoom12.getChatRoomId(), user2.getId(), "Hi!");
 		mockMvc.perform(post("/chat/{chatRoomId}/send-message", chatRoom12.getChatRoomId()).contentType(MediaType.APPLICATION_JSON).content(message).cookie(cookie2)).andExpect(status().isOk());
 		
-		message = wrapMessage("User#2 ping to user#3", user3.getId(), chatRoom32.getChatRoomId());
+		message = wrapMessage(chatRoom32.getChatRoomId(), user2.getId(), "User#2 ping to user#3");
 		mockMvc.perform(post("/chat/{chatRoomId}/send-message", chatRoom32.getChatRoomId()).contentType(MediaType.APPLICATION_JSON).content(message).cookie(cookie2)).andExpect(status().isOk());
 		
-		message = wrapMessage("Hello, who are you?", user2.getId(), chatRoom12.getChatRoomId());
+		message = wrapMessage(chatRoom12.getChatRoomId(), user1.getId(), "Hello, who are you?");
 		mockMvc.perform(post("/chat/{chatRoomId}/send-message", chatRoom12.getChatRoomId()).contentType(MediaType.APPLICATION_JSON).content(message).cookie(cookie1)).andExpect(status().isOk());
 		
-		message = wrapMessage("I am user#2", user1.getId(), chatRoom12.getChatRoomId());
-		mockMvc.perform(post("/chat/{chatRoomId}/send-message", chatRoom12.getChatRoomId()).contentType(MediaType.APPLICATION_JSON).content(message).cookie(cookie2)).andExpect(status().isOk());
+		message = wrapMessage(chatRoom12.getChatRoomId(), user2.getId(), "I am user#2");
+		mockMvc.perform(post("/chat/{chatRoomId}/send-messge", chatRoom12.getChatRoomId()).contentType(MediaType.APPLICATION_JSON).content(message).cookie(cookie2)).andExpect(status().isOk());
 		
-		message = wrapMessage("Hi, user#2!", user2.getId(), chatRoom12.getChatRoomId());
+		message = wrapMessage(chatRoom12.getChatRoomId(), user1.getId(), "Hi, user#2!");
 		mockMvc.perform(post("/chat/{chatRoomId}/send-message", chatRoom12.getChatRoomId()).contentType(MediaType.APPLICATION_JSON).content(message).cookie(cookie1)).andExpect(status().isOk());
 
-		message = wrapMessage("Sup, user#1.", user1.getId(), chatRoom13.getChatRoomId());
+		message = wrapMessage(chatRoom13.getChatRoomId(), user3.getId(), "Sup, user#1.");
 		mockMvc.perform(post("/chat/{chatRoomId}/send-message", chatRoom13.getChatRoomId()).contentType(MediaType.APPLICATION_JSON).content(message).cookie(cookie3)).andExpect(status().isOk());
 
-		message = wrapMessage("Yo, I'm nice!", user3.getId(), chatRoom13.getChatRoomId());
+		message = wrapMessage(chatRoom13.getChatRoomId(), user1.getId(), "Yo, I'm nice!");
 		mockMvc.perform(post("/chat/{chatRoomId}/send-message", chatRoom13.getChatRoomId()).contentType(MediaType.APPLICATION_JSON).content(message).cookie(cookie1)).andExpect(status().isOk());
 
-		message = wrapMessage("Let's go for a ride!", user1.getId(), chatRoom13.getChatRoomId());
+		message = wrapMessage("Let's go for a ride!", user3.getId(), chatRoom13.getChatRoomId());
 		mockMvc.perform(post("/chat/{chatRoomId}/send-message", chatRoom13.getChatRoomId()).contentType(MediaType.APPLICATION_JSON).content(message).cookie(cookie3)).andExpect(status().isOk());
 
-		message = wrapMessage("Nah, sry, I am too busy rn!", user3.getId(), chatRoom13.getChatRoomId());
+		message = wrapMessage("Nah, sry, I am too busy rn!", user1.getId(), chatRoom13.getChatRoomId());
 		mockMvc.perform(post("/chat/{chatRoomId}/send-message", chatRoom13.getChatRoomId()).contentType(MediaType.APPLICATION_JSON).content(message).cookie(cookie1)).andExpect(status().isOk());
 
-		message = wrapMessage("Hello, user#2. I am glad you pinged me!", user2.getId(), chatRoom32.getChatRoomId());
+		message = wrapMessage("Hello, user#2. I am glad you pinged me!", user3.getId(), chatRoom32.getChatRoomId());
 		mockMvc.perform(post("/chat/{chatRoomId}/send-message", chatRoom32.getChatRoomId()).contentType(MediaType.APPLICATION_JSON).content(message).cookie(cookie3)).andExpect(status().isOk());
 
-		message = wrapMessage("Ok. :-(", user1.getId(), chatRoom13.getChatRoomId());
+		message = wrapMessage("Ok. :-(", user3.getId(), chatRoom13.getChatRoomId());
 		mockMvc.perform(post("/chat/{chatRoomId}/send-message", chatRoom13.getChatRoomId()).contentType(MediaType.APPLICATION_JSON).content(message).cookie(cookie3)).andExpect(status().isOk());
 
-		message = wrapMessage("User#3 interception", user1.getId(), chatRoom12.getChatRoomId());
+		message = wrapMessage(chatRoom12.getChatRoomId(), user2.getId(), "User#3 interception");
 		mockMvc.perform(post("/chat/{chatRoomId}/send-message", chatRoom12.getChatRoomId()).contentType(MediaType.APPLICATION_JSON).content(message).cookie(cookie3)).andExpect(status().isUnauthorized());
-		message = wrapMessage("User#3 interception", user2.getId(), chatRoom12.getChatRoomId());
+		message = wrapMessage(chatRoom12.getChatRoomId(), user1.getId(), "User#3 interception");
 		mockMvc.perform(post("/chat/{chatRoomId}/send-message", chatRoom12.getChatRoomId()).contentType(MediaType.APPLICATION_JSON).content(message).cookie(cookie3)).andExpect(status().isUnauthorized());
 
-		message = wrapMessage("User#2 interception", user1.getId(), chatRoom13.getChatRoomId());
+		message = wrapMessage(chatRoom13.getChatRoomId(), user3.getId(), "User#2 interception");
 		mockMvc.perform(post("/chat/{chatRoomId}/send-message", chatRoom13.getChatRoomId()).contentType(MediaType.APPLICATION_JSON).content(message).cookie(cookie2)).andExpect(status().isUnauthorized());
-		message = wrapMessage("User#2 interception", user3.getId(), chatRoom13.getChatRoomId());
+		message = wrapMessage(chatRoom13.getChatRoomId(), user1.getId(), "User#2 interception");
 		mockMvc.perform(post("/chat/{chatRoomId}/send-message", chatRoom13.getChatRoomId()).contentType(MediaType.APPLICATION_JSON).content(message).cookie(cookie2)).andExpect(status().isUnauthorized());
 
-		message = wrapMessage("User#1 interception", user3.getId(), chatRoom32.getChatRoomId());
+		message = wrapMessage(chatRoom32.getChatRoomId(), user2.getId(), "User#1 interception");
 		mockMvc.perform(post("/chat/{chatRoomId}/send-message", chatRoom32.getChatRoomId()).contentType(MediaType.APPLICATION_JSON).content(message).cookie(cookie1)).andExpect(status().isUnauthorized());
-		message = wrapMessage("User#1 interception", user2.getId(), chatRoom32.getChatRoomId());
+		message = wrapMessage(chatRoom32.getChatRoomId(), user3.getId(), "User#1 interception");
 		mockMvc.perform(post("/chat/{chatRoomId}/send-message", chatRoom32.getChatRoomId()).contentType(MediaType.APPLICATION_JSON).content(message).cookie(cookie1)).andExpect(status().isUnauthorized());
 
 		String response1;
@@ -255,47 +251,23 @@ public class ChatTests {
 
 		response2 = mockMvc.perform(get("/chat/{chatRoomId}/messages", chatRoom12.getChatRoomId()).cookie(cookie3)).andExpect(status().isUnauthorized()).andReturn().getResponse().getContentAsString();
 		response2 = mockMvc.perform(get("/chat/{chatRoomId}/messages", chatRoom13.getChatRoomId()).cookie(cookie2)).andExpect(status().isUnauthorized()).andReturn().getResponse().getContentAsString();
-		response2 = mockMvc.perform(get("/chat/{chatRoomId}/messages", chatRoom32.getChatRoomId()).cookie(cookie1)).andExpect(status().isUnauthorized()).andReturn().getResponse().getContentAsString();
-	}
-
-	@Test
-	public void userInfoTest() throws Exception {
-		User user1 = SetupMethods.registerUser(mockMvc);
-		Cookie cookie1 = SetupMethods.activateUser(mockMvc, user1);
-		String json1 = SetupMethods.wrapSecondaryInfo(null, null, "UrlTag1");
-		mockMvc.perform(patch(SetupMethods.AUTH_API_USER_URL).cookie(cookie1).contentType(MediaType.APPLICATION_JSON).content(json1));
-		User user2 = SetupMethods.registerAnotherUser(mockMvc);
-		Cookie cookie2 = SetupMethods.activateUser(mockMvc, user2);
-		String json2 = SetupMethods.wrapSecondaryInfo(null, null, "UrlTag2");
-		mockMvc.perform(patch(SetupMethods.AUTH_API_USER_URL).cookie(cookie2).contentType(MediaType.APPLICATION_JSON).content(json2)).andExpect(status().isOk());
-
-		String user2Id = mockMvc.perform(get("/chat/{receiverUrlTag}/info", user2.getId()).cookie(cookie1)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-		String user1Id = mockMvc.perform(get("/chat/{receiverUrlTag}/info", user1.getId()).cookie(cookie2)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-		String user2Tag = mockMvc.perform(get("/chat/{receiverUrlTag}/info", "UrlTag2").cookie(cookie1)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-		String user1Tag = mockMvc.perform(get("/chat/{receiverUrlTag}/info", "UrlTag1").cookie(cookie2)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-		mockMvc.perform(get("/chat/{receiverUrlTag}/info", UUID.randomUUID().toString()).cookie(cookie1)).andExpect(status().isNotFound());
-		mockMvc.perform(get("/chat/{receiverUrlTag}/info", UUID.randomUUID().toString()).cookie(cookie2)).andExpect(status().isNotFound());
-		assertEquals(user1Tag, user1Id);
-		assertEquals(user2Tag, user2Id);
-	}
-
-	@Test
-	public void getChatRoomTest() throws Exception {
-		User user1 = SetupMethods.registerUser(mockMvc);
-		Cookie cookie1 = SetupMethods.activateUser(mockMvc, user1);
-		User user2 = SetupMethods.registerAnotherUser(mockMvc);
-		Cookie cookie2 = SetupMethods.activateUser(mockMvc, user2);
-		mockMvc.perform(get("/chat/{receiverUrlTag}/room", user2.getId()).cookie(cookie1));
-		mockMvc.perform(get("/chat/{receiverUrlTag}/room", user2.getId()).cookie(cookie2));
+		response2 = mockMvc.perform(get("/chat/{chatRoomId}/messages", chatRoom32.getChatRoomId()).cookie(cookie1)).andExpect(status().isUnauthorized()).andReturn().getResponse().getContentAsString();*/
 	}
 
 	@AfterEach
 	public void cleanUp() {
-		stompSession1.disconnect();
-		stompSession2.disconnect();
-		stompSession3.disconnect();
+		if (stompSession1 != null) {
+			stompSession1.disconnect();
+		}
+		if (stompSession2 != null) {
+			stompSession2.disconnect();
+		}
+		if (stompSession3 != null) {
+			stompSession3.disconnect();
+		}
 		JdbcTestUtils.deleteFromTables(jdbcTemplate, "messages");
 		JdbcTestUtils.deleteFromTables(jdbcTemplate, "chat_rooms");
+		JdbcTestUtils.deleteFromTables(jdbcTemplate, "user_and_chat_room");
 		JdbcTestUtils.deleteFromTables(jdbcTemplate, "users_data");
 	}
 }

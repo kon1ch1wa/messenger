@@ -18,13 +18,13 @@ import ru.shutoff.messenger.model.User;
 @RequiredArgsConstructor
 @Component
 public class UserInfoRepoImpl implements UserInfoRepo {
-	private static final String SQL_SAVE = "insert into users_data(id, email, login, name, password, is_activated, token) values (?, ?, ?, ?, ?, ?, ?)";
-	private static final String SQL_UPDATE = "update users_data set password=?, is_activated=?, description=coalesce(?, description), phone_number=coalesce(?, phone_number), url_tag=coalesce(?, url_tag), token=? where id=?";
-	private static final String SQL_GET_USER_BY_ID = "select * from users_data where id=?";
-	private static final String SQL_GET_USER_BY_EMAIL = "select * from users_data where email=?";
-	private static final String SQL_GET_USER_BY_LOGIN = "select * from users_data where login=?";
-	private static final String SQL_GET_USER_BY_TAG = "select * from users_data where url_tag=?";
-	private static final String SQL_GET_USER_BY_TOKEN = "select * from users_data where token=?";
+	private static final String SQL_SAVE = "insert into users(id, email, login, name, password, is_activated, token) values (?, ?, ?, ?, ?, ?, ?)";
+	private static final String SQL_UPDATE = "update users set password=?, is_activated=?, description=coalesce(?, description), phone_number=coalesce(?, phone_number), url_tag=coalesce(?, url_tag), token=? where id=?";
+	private static final String SQL_GET_USER_BY_ID = "select * from users where id=?";
+	private static final String SQL_GET_USER_BY_EMAIL = "select * from users where email=?";
+	private static final String SQL_GET_USER_BY_LOGIN = "select * from users where login=?";
+	private static final String SQL_GET_USER_BY_TAG = "select * from users where url_tag=?";
+	private static final String SQL_GET_USER_BY_TOKEN = "select * from users where token=?";
 
 	private final JdbcTemplate jdbcTemplate;
 
@@ -46,7 +46,8 @@ public class UserInfoRepoImpl implements UserInfoRepo {
 		try {
 			jdbcTemplate.update(SQL_SAVE, user.getId(), user.getEmail(), user.getLogin(), user.getName(), user.getPassword(), user.isActivated(), user.getToken());
 		} catch (DataAccessException ex) {
-			throw new DuplicateUserException("User with this email or login already exists");
+			String err = String.format("User with this email or login already exists: %s", ex.getMessage());
+			throw new DuplicateUserException(err);
 		}
 	}
 

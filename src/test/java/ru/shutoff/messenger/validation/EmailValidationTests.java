@@ -1,5 +1,10 @@
 package ru.shutoff.messenger.validation;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.stream.Stream;
+
 import org.hibernate.validator.internal.constraintvalidators.bv.EmailValidator;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -7,11 +12,6 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.InjectMocks;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.util.stream.Stream;
-
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @ExtendWith(MockitoExtension.class)
 public class EmailValidationTests {
@@ -72,7 +72,9 @@ public class EmailValidationTests {
 				Arguments.of("v-putin@mail.ru"),
 				Arguments.of("v-putin.almighty@mail.ru"),
 				Arguments.of("v.putin@mail.ru"),
-				Arguments.of("correct@inbox-net.ru")
+				Arguments.of("correct@inbox-net.ru"),
+				Arguments.of("a@a.ru"),
+				Arguments.of("b@b.ru")
 		);
 	}
 }

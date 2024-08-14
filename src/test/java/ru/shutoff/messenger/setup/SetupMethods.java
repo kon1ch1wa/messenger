@@ -1,25 +1,24 @@
 package ru.shutoff.messenger.setup;
 
-import jakarta.servlet.http.Cookie;
-import org.springframework.data.util.Pair;
-import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.shaded.com.fasterxml.jackson.core.JsonProcessingException;
-import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
-import ru.shutoff.messenger.dto.UserPrimaryInfoDTO;
-import ru.shutoff.messenger.dto.UserSecondaryInfoDTO;
-import ru.shutoff.messenger.model.User;
-
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import org.springframework.data.util.Pair;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import org.testcontainers.shaded.com.fasterxml.jackson.core.JsonProcessingException;
+import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
+import org.testcontainers.utility.DockerImageName;
+
+import jakarta.servlet.http.Cookie;
+import ru.shutoff.messenger.dto.RegisterRequest;
+import ru.shutoff.messenger.dto.UpdateInfoRequest;
+import ru.shutoff.messenger.model.User;
+
 public class SetupMethods {
-	public static final PostgreSQLContainer<?> container = new PostgreSQLContainer<>("postgres:15.3")
-			.withUsername("admin")
-			.withPassword("admin")
-			.withDatabaseName("messenger_db");
+	public static DockerImageName postgresImageName = DockerImageName.parse("postgres:latest");
+	public static DockerImageName rabbitImageName = DockerImageName.parse("rabbitmq:latest");
 
 	public static final String EMAIL = "spring.email.receiver.daemon@gmail.com";
 	public static final String LOGIN = "test_login";
@@ -40,22 +39,22 @@ public class SetupMethods {
 	public static final String UPDATE_PASSWORD_URL = "/updateCredsApi/restorePassword";
 
 	public static String wrapPrimaryInfo() throws JsonProcessingException {
-		UserPrimaryInfoDTO info = new UserPrimaryInfoDTO(EMAIL, LOGIN, NAME, PASS);
+		RegisterRequest info = new RegisterRequest(EMAIL, LOGIN, NAME, PASS);
 		return new ObjectMapper().writeValueAsString(info);
 	}
 
 	public static String wrapSecondaryInfo() throws JsonProcessingException {
-		UserSecondaryInfoDTO info = new UserSecondaryInfoDTO(DESC, PHONE_NUMBER, URL_TAG);
+		UpdateInfoRequest info = new UpdateInfoRequest(DESC, PHONE_NUMBER, URL_TAG);
 		return new ObjectMapper().writeValueAsString(info);
 	}
 
 	public static String wrapPrimaryInfo(String email, String login, String name, String password) throws JsonProcessingException {
-		UserPrimaryInfoDTO info = new UserPrimaryInfoDTO(email, login, name, password);
+		RegisterRequest info = new RegisterRequest(email, login, name, password);
 		return new ObjectMapper().writeValueAsString(info);
 	}
 
 	public static String wrapSecondaryInfo(String description, String phoneNumber, String urlTag) throws JsonProcessingException {
-		UserSecondaryInfoDTO info = new UserSecondaryInfoDTO(description, phoneNumber, urlTag);
+		UpdateInfoRequest info = new UpdateInfoRequest(description, phoneNumber, urlTag);
 		return new ObjectMapper().writeValueAsString(info);
 	}
 

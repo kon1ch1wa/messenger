@@ -1,9 +1,7 @@
 package ru.shutoff.messenger.setup;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.context.annotation.Bean;
-import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 
 @org.springframework.boot.test.context.TestConfiguration

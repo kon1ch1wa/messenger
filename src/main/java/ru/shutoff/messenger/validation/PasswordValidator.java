@@ -6,7 +6,7 @@ import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
 public class PasswordValidator implements ConstraintValidator<PasswordConstraint, String> {
-	private static final String pattern = "(?=.*\\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[~`!@#$%^&*()\\-_+=\\[\\]{}|',.<>/?])(?!.*[\"\\\\])(.{6,})";
+	private static final String pattern = "(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[~`!@#$%^&*()\\\\-_+=\\[\\]{}|',.?])(?!.*[\"\\\\<>/])(.{6,})";
 	@Override
 	public boolean isValid(String s, ConstraintValidatorContext constraintValidatorContext) {
 		return s != null && s.matches(pattern) && s.chars().distinct().count() >= 6;
