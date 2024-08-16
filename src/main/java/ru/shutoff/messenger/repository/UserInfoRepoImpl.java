@@ -38,7 +38,7 @@ public class UserInfoRepoImpl implements UserInfoRepo {
 			rs.getString("description"),
 			rs.getString("phone_number"),
 			rs.getString("url_tag"),
-			rs.getString("token")
+			null
 	);
 
 	@Override

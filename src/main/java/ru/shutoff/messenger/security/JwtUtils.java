@@ -18,12 +18,10 @@ import io.jsonwebtoken.io.Encoders;
 import io.jsonwebtoken.security.Keys;
 import jakarta.servlet.http.Cookie;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import ru.shutoff.messenger.exception.NotAuthorizedException;
 
 @Component
 @RequiredArgsConstructor
-@Slf4j
 public class JwtUtils {
 	@Value("${jwt.expiration_time}")
 	private int JwtExpiration;
@@ -46,7 +44,6 @@ public class JwtUtils {
 
 	public void refreshJwtToken(Cookie jwtCookie) {
 		String jwtToken = jwtCookie.getValue();
-		log.debug ("jwtToken: {}", jwtToken);
 		Claims claims = Jwts
 				.parserBuilder()
 				.setSigningKey(key())
@@ -101,7 +98,6 @@ public class JwtUtils {
 		jwtCookie.setSecure(true);
 		jwtCookie.setPath("/");
 		jwtCookie.setMaxAge(JwtExpiration);
-		log.debug("Value: {}", jwtCookie.getValue());
 		return jwtCookie;
 	}
 }

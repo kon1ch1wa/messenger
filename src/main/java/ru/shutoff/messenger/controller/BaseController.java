@@ -5,6 +5,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+
 import ru.shutoff.messenger.chat_logic.exception.ChatRoomNotFoundException;
 import ru.shutoff.messenger.chat_logic.exception.MessageNotFoundException;
 import ru.shutoff.messenger.exception.DuplicateUserException;
