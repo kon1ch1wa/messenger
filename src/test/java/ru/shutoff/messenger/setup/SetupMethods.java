@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.shaded.com.fasterxml.jackson.core.JsonProcessingException;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -15,6 +16,11 @@ import ru.shutoff.messenger.dto.UserSecondaryInfoDTO;
 import ru.shutoff.messenger.model.User;
 
 public class SetupMethods {
+	public static final PostgreSQLContainer<?> container = new PostgreSQLContainer<>("postgres:15.3")
+			.withUsername("admin")
+			.withPassword("admin")
+			.withDatabaseName("messenger_db");
+
 	public static final String EMAIL = "spring.email.receiver.daemon@gmail.com";
 	public static final String LOGIN = "test_login";
 	public static final String PASS = "Test_Pass_0";
@@ -26,7 +32,6 @@ public class SetupMethods {
 	public static final String PING_URL = "/ping";
 	public static final String AUTH_API_LOGOUT_URL = "/authApi/logout";
 	public static final String AUTH_API_LOGIN_URL = "/authApi/login";
-	public static final String JWT_COOKIE_NAME = "JwtToken";
 
 	public static final String FORGOT_LOGIN_URL = "/forgotCredsApi/forgotLogin";
 	public static final String FORGOT_PASSWORD_URL = "/forgotCredsApi/forgotPassword";

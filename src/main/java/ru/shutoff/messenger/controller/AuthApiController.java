@@ -33,10 +33,7 @@ public class AuthApiController {
     @GetMapping("/user")
     public User endRegistration(@Valid @NotNull @NotBlank @NotEmpty @RequestParam String token, HttpServletResponse response) {
         Pair<User, String> pair = service.endRegistration(token);
-        Cookie cookie = new Cookie("JwtToken", pair.getSecond());
-        cookie.setSecure(true);
-        cookie.setHttpOnly(true);
-        response.addCookie(cookie);
+        response.addCookie(jwtUtils.formCookie(pair.getSecond()));
         return pair.getFirst();
     }
 
@@ -63,10 +60,7 @@ public class AuthApiController {
     @PostMapping("/login")
     public String login(@Valid @RequestBody LoginRequest loginRequest, HttpServletResponse response) {
         String token = service.login(loginRequest.login(), loginRequest.password());
-        Cookie cookie = new Cookie("JwtToken", token);
-        cookie.setSecure(true);
-        cookie.setHttpOnly(true);
-        response.addCookie(cookie);
+        response.addCookie(jwtUtils.formCookie(token));
         return token;
     }
 }

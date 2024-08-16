@@ -1,43 +1,50 @@
 package ru.shutoff.messenger.controller;
 
-import jakarta.servlet.http.Cookie;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static ru.shutoff.messenger.setup.SetupMethods.AUTH_API_LOGIN_URL;
+import static ru.shutoff.messenger.setup.SetupMethods.AUTH_API_LOGOUT_URL;
+import static ru.shutoff.messenger.setup.SetupMethods.LOGIN;
+import static ru.shutoff.messenger.setup.SetupMethods.PASS;
+import static ru.shutoff.messenger.setup.SetupMethods.PING_URL;
+import static ru.shutoff.messenger.setup.SetupMethods.registerUser;
+
+import java.util.concurrent.TimeUnit;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.jdbc.JdbcTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.transaction.annotation.Transactional;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
+
+import jakarta.servlet.http.Cookie;
 import ru.shutoff.messenger.MessengerApplication;
 import ru.shutoff.messenger.dto.LoginRequest;
-
-import java.util.Optional;
-import java.util.concurrent.TimeUnit;
-
-import static ru.shutoff.messenger.setup.SetupMethods.*;
-import static org.junit.jupiter.api.Assertions.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import ru.shutoff.messenger.setup.SetupMethods;
+import ru.shutoff.messenger.setup.TestConfiguration;
 
 @Testcontainers
 @SpringBootTest(classes = MessengerApplication.class)
+@Import(TestConfiguration.class)
 @AutoConfigureMockMvc
 public class JwtTokenIntegrationTests {
 	@Container
-	private static final PostgreSQLContainer<?> container = new PostgreSQLContainer<>("postgres:15.3")
-			.withUsername("admin")
-			.withPassword("admin")
-			.withDatabaseName("messenger_db");
+	private static final PostgreSQLContainer<?> container = SetupMethods.container;
 
 	@DynamicPropertySource
 	static void registerProps(DynamicPropertyRegistry registry) {
@@ -55,8 +62,12 @@ public class JwtTokenIntegrationTests {
 
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
-	
-	private static final ObjectMapper mapper = new ObjectMapper();
+
+	@Autowired
+	private ObjectMapper mapper;
+
+	@Autowired
+	private String jwtCookieName;
 
 	@Test
 	void runningContainerTest() {
@@ -66,7 +77,7 @@ public class JwtTokenIntegrationTests {
 	@Test
 	void pingUnauthorizedNotCreatingCookieTest() throws Exception {
 		Cookie cookie = mockMvc.perform(get(PING_URL))
-				.andExpect(status().isUnauthorized()).andReturn().getResponse().getCookie(JWT_COOKIE_NAME);
+				.andExpect(status().isUnauthorized()).andReturn().getResponse().getCookie(jwtCookieName);
 		assertNull(cookie);
 	}
 
@@ -81,7 +92,7 @@ public class JwtTokenIntegrationTests {
 		mockMvc.perform(get(PING_URL)).andExpect(status().isUnauthorized());
 		Cookie cookie = registerUser(mockMvc);
 		Cookie cookieNew = mockMvc.perform(get(PING_URL).cookie(cookie))
-				.andExpect(status().isOk()).andReturn().getResponse().getCookie(JWT_COOKIE_NAME);
+				.andExpect(status().isOk()).andReturn().getResponse().getCookie(jwtCookieName);
 		assertNotNull(cookieNew);
 		mockMvc.perform(get(PING_URL).cookie(cookieNew)).andExpect(status().isOk());
 	}
@@ -91,10 +102,10 @@ public class JwtTokenIntegrationTests {
 		Cookie cookie = registerUser(mockMvc);
 
 		cookie = mockMvc.perform(get(PING_URL).cookie(cookie))
-				.andExpect(status().isOk()).andReturn().getResponse().getCookie(JWT_COOKIE_NAME);
+				.andExpect(status().isOk()).andReturn().getResponse().getCookie(jwtCookieName);
 		Thread.sleep(TimeUnit.SECONDS.toMillis(1));
 		cookie = mockMvc.perform(get(PING_URL).cookie(cookie))
-				.andExpect(status().isOk()).andReturn().getResponse().getCookie(JWT_COOKIE_NAME);
+				.andExpect(status().isOk()).andReturn().getResponse().getCookie(jwtCookieName);
 		Thread.sleep(TimeUnit.SECONDS.toMillis(2));
 		mockMvc.perform(get(PING_URL)).andExpect(status().isUnauthorized());
 	}
@@ -105,20 +116,20 @@ public class JwtTokenIntegrationTests {
 		Cookie cookie = registerUser(mockMvc);
 
 		cookie = mockMvc.perform(get(PING_URL).cookie(cookie))
-				.andExpect(status().isOk()).andReturn().getResponse().getCookie(JWT_COOKIE_NAME);
+				.andExpect(status().isOk()).andReturn().getResponse().getCookie(jwtCookieName);
 		cookie = mockMvc.perform(get(AUTH_API_LOGOUT_URL).cookie(cookie))
-				.andExpect(status().isOk()).andReturn().getResponse().getCookie(JWT_COOKIE_NAME);
+				.andExpect(status().isOk()).andReturn().getResponse().getCookie(jwtCookieName);
 		mockMvc.perform(get(PING_URL)).andExpect(status().isUnauthorized());
 
 		String authJson = mapper.writeValueAsString(new LoginRequest(LOGIN, PASS));
 		Cookie authCookie = mockMvc.perform(post(AUTH_API_LOGIN_URL).contentType(MediaType.APPLICATION_JSON).content(authJson))
-				.andExpect(status().isOk()).andReturn().getResponse().getCookie(JWT_COOKIE_NAME);
+				.andExpect(status().isOk()).andReturn().getResponse().getCookie(jwtCookieName);
 		authCookie = mockMvc.perform(get(PING_URL).cookie(authCookie))
-				.andExpect(status().isOk()).andReturn().getResponse().getCookie(JWT_COOKIE_NAME);
+				.andExpect(status().isOk()).andReturn().getResponse().getCookie(jwtCookieName);
 		mockMvc.perform(get(AUTH_API_LOGOUT_URL).cookie(authCookie)).andExpect(status().isOk());
 
 		Cookie authCookieNew = mockMvc.perform(post(AUTH_API_LOGIN_URL))
-				.andExpect(status().isBadRequest()).andReturn().getResponse().getCookie(JWT_COOKIE_NAME);
+				.andExpect(status().isBadRequest()).andReturn().getResponse().getCookie(jwtCookieName);
 		assertNull(authCookieNew);
 		String authJson1 = mapper.writeValueAsString(new LoginRequest(LOGIN, "Wrong_Password_0"));
 		mockMvc.perform(post(AUTH_API_LOGIN_URL).contentType(MediaType.APPLICATION_JSON).content(authJson1))
@@ -133,9 +144,9 @@ public class JwtTokenIntegrationTests {
 		mockMvc.perform(get(AUTH_API_LOGOUT_URL)).andExpect(status().isUnauthorized());
 		Cookie cookie = registerUser(mockMvc);
 		cookie = mockMvc.perform(get(PING_URL).cookie(cookie))
-				.andExpect(status().isOk()).andReturn().getResponse().getCookie(JWT_COOKIE_NAME);
+				.andExpect(status().isOk()).andReturn().getResponse().getCookie(jwtCookieName);
 		cookie = mockMvc.perform(get(AUTH_API_LOGOUT_URL).cookie(cookie)).andExpect(status().isOk())
-				.andReturn().getResponse().getCookie(JWT_COOKIE_NAME);
+				.andReturn().getResponse().getCookie(jwtCookieName);
 		mockMvc.perform(get(PING_URL)).andExpect(status().isUnauthorized());
 	}
 

@@ -88,6 +88,9 @@ public class AuthApiService {
 	public String login(String login, String password) {
 		try {
 			User user = userInfoRepo.getByLogin(login);
+			if (!user.isActivated()) {
+				throw new NotAuthorizedException("Not authorized: Account is not activated");
+			}
 			Authentication authentication = authenticationManager.authenticate(
 					new UsernamePasswordAuthenticationToken(
 							login,

@@ -17,12 +17,12 @@ import ru.shutoff.messenger.model.User;
 @RequiredArgsConstructor
 @Component
 public class UserInfoRepoImpl implements UserInfoRepo {
-	private static final String SQL_PRIMARY_SAVE = "insert into users_data(id, email, login, password, is_activated) values (?, ?, ?, ?, ?)";
-	private static final String SQL_GET_PRIMARY = "select id, email, login, password, is_activated, token from users_data where token=?";
-	private static final String SQL_UPDATE = "update users_data set email=?, login=?, password=?, is_activated=?, description=?, phone_number=?, url_tag=? where id=?";
-	private static final String SQL_GET_USER_BY_ID = "select id, email, login, password, is_activated, description, phone_number, url_tag from users_data where id=?";
-	private static final String SQL_GET_USER_BY_EMAIL = "select id, email, login, password, is_activated, description, phone_number, url_tag from users_data where email=?";
-	private static final String SQL_GET_USER_BY_LOGIN = "select id, email, login, password, is_activated, description, phone_number, url_tag from users_data where login=?";
+	private static final String SQL_SAVE = "insert into users_data(id, email, login, password, is_activated, token) values (?, ?, ?, ?, ?, ?)";
+	private static final String SQL_GET_USER_BY_TOKEN = "select id, email, login, password, is_activated, description, phone_number, url_tag, token from users_data where token=?";
+	private static final String SQL_UPDATE = "update users_data set password=?, is_activated=?, description=coalesce(?, description), phone_number=coalesce(?, phone_number), url_tag=coalesce(?, url_tag), token=? where id=?";
+	private static final String SQL_GET_USER_BY_ID = "select id, email, login, password, is_activated, description, phone_number, url_tag, token from users_data where id=?";
+	private static final String SQL_GET_USER_BY_EMAIL = "select id, email, login, password, is_activated, description, phone_number, url_tag, token from users_data where email=?";
+	private static final String SQL_GET_USER_BY_LOGIN = "select id, email, login, password, is_activated, description, phone_number, url_tag, token from users_data where login=?";
 	private static final String SQL_GET_LOGIN_BY_EMAIL = "select login from users_data where email=?";
 	private static final String SQL_GET_EMAIL_BY_LOGIN = "select email from users_data where login=?";
 
@@ -53,7 +53,7 @@ public class UserInfoRepoImpl implements UserInfoRepo {
 	@Override
 	public void save(User user) {
 		try {
-			jdbcTemplate.update(SQL_PRIMARY_SAVE, user.getId(), user.getEmail(), user.getLogin(), user.getPassword(), user.isActivated());
+			jdbcTemplate.update(SQL_SAVE, user.getId(), user.getEmail(), user.getLogin(), user.getPassword(), user.isActivated());
 		} catch (DuplicateKeyException ex) {
 			throw new DuplicateUserException("This email or login are already taken");
 		}
@@ -62,7 +62,7 @@ public class UserInfoRepoImpl implements UserInfoRepo {
 	@Override
 	public User getPrimary(String token) {
 		try {
-			return jdbcTemplate.queryForObject(SQL_GET_PRIMARY, primaryUserMapper, token);
+			return jdbcTemplate.queryForObject(SQL_GET_USER_BY_TOKEN, primaryUserMapper, token);
 		} catch (DataAccessException ex) {
 			throw new InvalidTokenException(ex.getMessage());
 		}
@@ -71,9 +71,11 @@ public class UserInfoRepoImpl implements UserInfoRepo {
 	@Override
 	public void update(User user) {
 		try {
-			jdbcTemplate.update(SQL_UPDATE, user.getEmail(), user.getLogin(), user.getPassword(), user.isActivated(), user.getDescription(), user.getPhoneNumber(), user.getUrlTag(), user.getId());
-		} catch (DataAccessException ex) {
+			jdbcTemplate.update(SQL_UPDATE, user.getPassword(), user.isActivated(), user.getDescription(), user.getPhoneNumber(), user.getUrlTag(), user.getToken(), user.getId());
+		} catch (DuplicateKeyException ex) {
 			throw new DuplicateUserException("Some data that should be unique is duplicated, please check.");
+		} catch (DataAccessException ex) {
+			throw new UsernameNotFoundException("No such user");
 		}
 	}
 
