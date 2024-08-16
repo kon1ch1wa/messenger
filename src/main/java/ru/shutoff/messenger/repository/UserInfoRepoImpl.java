@@ -1,17 +1,18 @@
 package ru.shutoff.messenger.repository;
 
-import lombok.RequiredArgsConstructor;
+import java.util.UUID;
+
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Component;
+
+import lombok.RequiredArgsConstructor;
 import ru.shutoff.messenger.exception.DuplicateUserException;
 import ru.shutoff.messenger.exception.InvalidTokenException;
 import ru.shutoff.messenger.model.User;
-
-import java.util.UUID;
 
 @RequiredArgsConstructor
 @Component
@@ -27,7 +28,6 @@ public class UserInfoRepoImpl implements UserInfoRepo {
 	private static final String SQL_GET_LOGIN_BY_EMAIL = "select login from users_data where email=?";
 
 	private final JdbcTemplate jdbcTemplate;
-
 	private final RowMapper<User> primaryUserMapper = (rs, rowNum) -> new User(
 			rs.getObject("id", UUID.class),
 			rs.getString("email"),
