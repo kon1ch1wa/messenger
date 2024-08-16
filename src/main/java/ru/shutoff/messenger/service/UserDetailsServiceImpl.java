@@ -1,15 +1,15 @@
 package ru.shutoff.messenger.service;
 
-import lombok.RequiredArgsConstructor;
+import java.util.ArrayList;
+
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+
+import lombok.RequiredArgsConstructor;
 import ru.shutoff.messenger.model.User;
 import ru.shutoff.messenger.repository.UserInfoRepo;
-
-import java.util.ArrayList;
 
 @Service
 @RequiredArgsConstructor

@@ -1,19 +1,18 @@
 package ru.shutoff.messenger.repository;
 
-import lombok.Data;
-import lombok.RequiredArgsConstructor;
+import java.util.UUID;
+
 import org.springframework.dao.DataAccessException;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Component;
+
+import lombok.RequiredArgsConstructor;
 import ru.shutoff.messenger.exception.DuplicateUserException;
 import ru.shutoff.messenger.exception.InvalidTokenException;
 import ru.shutoff.messenger.model.User;
-
-import java.util.UUID;
 
 @RequiredArgsConstructor
 @Component
@@ -29,6 +28,16 @@ public class UserInfoRepoImpl implements UserInfoRepo {
 
 	private final JdbcTemplate jdbcTemplate;
 
+	private final RowMapper<User> primaryUserMapper = (rs, rowNum) -> new User(
+			rs.getObject("id", UUID.class),
+			rs.getString("email"),
+			rs.getString("login"),
+			rs.getString("password"),
+			rs.getBoolean("is_activated"),
+			null, null, null,
+			rs.getString("token")
+	);
+
 	private final RowMapper<User> userMapper = (rs, rowNum) -> new User(
 			rs.getObject("id", UUID.class),
 			rs.getString("email"),
@@ -38,22 +47,22 @@ public class UserInfoRepoImpl implements UserInfoRepo {
 			rs.getString("description"),
 			rs.getString("phone_number"),
 			rs.getString("url_tag"),
-			rs.getString("token")
+			null
 	);
 
 	@Override
 	public void save(User user) {
 		try {
-			jdbcTemplate.update(SQL_SAVE, user.getId(), user.getEmail(), user.getLogin(), user.getPassword(), user.isActivated(), user.getToken());
-		} catch (DataAccessException ex) {
-			throw new DuplicateUserException("User with this email or login already exists");
+			jdbcTemplate.update(SQL_SAVE, user.getId(), user.getEmail(), user.getLogin(), user.getPassword(), user.isActivated());
+		} catch (DuplicateKeyException ex) {
+			throw new DuplicateUserException("This email or login are already taken");
 		}
 	}
 
 	@Override
 	public User getPrimary(String token) {
 		try {
-			return jdbcTemplate.queryForObject(SQL_GET_USER_BY_TOKEN, userMapper, token);
+			return jdbcTemplate.queryForObject(SQL_GET_USER_BY_TOKEN, primaryUserMapper, token);
 		} catch (DataAccessException ex) {
 			throw new InvalidTokenException(ex.getMessage());
 		}

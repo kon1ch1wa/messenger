@@ -1,5 +1,8 @@
 package ru.shutoff.messenger.controller;
 
+import org.springframework.data.util.Pair;
+import org.springframework.web.bind.annotation.*;
+
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -8,19 +11,12 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.util.Pair;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.web.bind.annotation.*;
 import ru.shutoff.messenger.dto.LoginRequest;
 import ru.shutoff.messenger.dto.UserPrimaryInfoDTO;
 import ru.shutoff.messenger.dto.UserSecondaryInfoDTO;
-import ru.shutoff.messenger.exception.DuplicateUserException;
-import ru.shutoff.messenger.exception.NotAuthorizedException;
 import ru.shutoff.messenger.model.User;
 import ru.shutoff.messenger.security.JwtUtils;
 import ru.shutoff.messenger.service.AuthApiService;
-
-import java.util.Arrays;
 
 @RestController
 @RequestMapping("/authApi")

@@ -1,8 +1,20 @@
 package ru.shutoff.messenger.controller;
 
-import jakarta.servlet.http.Cookie;
-import lombok.RequiredArgsConstructor;
-import org.checkerframework.checker.units.qual.A;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static ru.shutoff.messenger.setup.SetupMethods.AUTH_API_LOGIN_URL;
+import static ru.shutoff.messenger.setup.SetupMethods.AUTH_API_LOGOUT_URL;
+import static ru.shutoff.messenger.setup.SetupMethods.LOGIN;
+import static ru.shutoff.messenger.setup.SetupMethods.PASS;
+import static ru.shutoff.messenger.setup.SetupMethods.PING_URL;
+import static ru.shutoff.messenger.setup.SetupMethods.registerUser;
+
+import java.util.concurrent.TimeUnit;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,24 +27,16 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.jdbc.JdbcTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.transaction.annotation.Transactional;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
+
+import jakarta.servlet.http.Cookie;
 import ru.shutoff.messenger.MessengerApplication;
 import ru.shutoff.messenger.dto.LoginRequest;
 import ru.shutoff.messenger.setup.SetupMethods;
 import ru.shutoff.messenger.setup.TestConfiguration;
-
-import java.util.Optional;
-import java.util.concurrent.TimeUnit;
-
-import static ru.shutoff.messenger.setup.SetupMethods.*;
-import static org.junit.jupiter.api.Assertions.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @Testcontainers
 @SpringBootTest(classes = MessengerApplication.class)
