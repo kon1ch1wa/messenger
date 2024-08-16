@@ -5,4 +5,5 @@ target/
 *.iml
 build/
 cleaning.sh
+.vscode/
 *application.yml

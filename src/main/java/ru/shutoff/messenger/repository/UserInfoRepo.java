@@ -1,14 +1,23 @@
 package ru.shutoff.messenger.repository;
 
-import org.springframework.stereotype.Repository;
-import ru.shutoff.messenger.model.User;
-
 import java.util.UUID;
+
+import org.springframework.stereotype.Repository;
+
+import ru.shutoff.messenger.model.User;
 
 @Repository
 public interface UserInfoRepo {
-	void save(User user);
+	void primarySave(User user);
 	void addToken(UUID userId, String token);
-	User getByToken(String token);
+	User getPrimary(String token);
 	void deleteToken(String token);
+	void update(User user);
+	void updateValueById(String type, String value, UUID userId);
+	void updateValueByEmail(String type, String value, String email);
+	void updateValueByLogin(String type, String value, String login);
+	String getLoginByEmail(String email);
+	User getById(UUID userId);
+	User getByEmail(String email);
+	User getByLogin(String login);
 }
