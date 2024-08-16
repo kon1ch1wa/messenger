@@ -1,49 +1,74 @@
 package ru.shutoff.messenger.validation;
 
-import jakarta.servlet.http.Cookie;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.springframework.amqp.rabbit.core.RabbitAdmin;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.jdbc.JdbcTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.transaction.annotation.Transactional;
 import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
-import ru.shutoff.messenger.MessengerApplication;
-import ru.shutoff.messenger.dto.*;
-import ru.shutoff.messenger.setup.SetupMethods;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import jakarta.servlet.http.Cookie;
+import ru.shutoff.messenger.MessengerApplication;
+import ru.shutoff.messenger.dto.LoginRequest;
+import ru.shutoff.messenger.dto.RegisterRequest;
+import ru.shutoff.messenger.dto.RestorePasswordNoAccessDto;
+import ru.shutoff.messenger.dto.RestorePasswordWithAccessDto;
+import ru.shutoff.messenger.dto.UpdateInfoRequest;
+import ru.shutoff.messenger.setup.SetupMethods;
 
 @Testcontainers
 @SpringBootTest(classes = MessengerApplication.class)
 @AutoConfigureMockMvc
 public class ValidationIntegrationTests {
-	@Container
-	private static final PostgreSQLContainer<?> container = new PostgreSQLContainer<>("postgres:15.3")
+	public static final PostgreSQLContainer<?> postgresContainer = new PostgreSQLContainer<>(SetupMethods.postgresImageName)
 			.withUsername("admin")
 			.withPassword("admin")
 			.withDatabaseName("messenger_db");
 
+	@MockBean
+	private RabbitTemplate rabbitTemplate;
+
+	@MockBean
+	private RabbitAdmin rabbitAdmin;
+
+	@BeforeAll
+	static void beforeAll() {
+		postgresContainer.start();
+	}
+
+	@AfterAll
+	static void afterAll() {
+		postgresContainer.stop();
+		postgresContainer.close();
+	}
+
 	@DynamicPropertySource
 	static void registerProps(DynamicPropertyRegistry registry) {
-		registry.add("spring.datasource.url", container::getJdbcUrl);
-		registry.add("spring.datasource.username", container::getUsername);
-		registry.add("spring.datasource.password", container::getPassword);
-		registry.add("spring.liquibase.url", container::getJdbcUrl);
-		registry.add("spring.liquibase.user", container::getUsername);
-		registry.add("spring.liquibase.password", container::getPassword);
+		registry.add("spring.datasource.url", postgresContainer::getJdbcUrl);
+		registry.add("spring.datasource.username", postgresContainer::getUsername);
+		registry.add("spring.datasource.password", postgresContainer::getPassword);
+		registry.add("spring.liquibase.url", postgresContainer::getJdbcUrl);
+		registry.add("spring.liquibase.user", postgresContainer::getUsername);
+		registry.add("spring.liquibase.password", postgresContainer::getPassword);
 	}
 
 	@Autowired
@@ -56,17 +81,17 @@ public class ValidationIntegrationTests {
 
 	@Test
 	void runningContainerTest() {
-		assertTrue(container.isRunning());
+		assertTrue(postgresContainer.isRunning());
 	}
 
 	@Test
 	public void registerWithInvalidDataTest() throws Exception {
-		String invalidEmail = mapper.writeValueAsString(new UserPrimaryInfoDTO("not_valid_email", "valid_login", "Valid_Pass_123"));
-		String nullEmail = mapper.writeValueAsString(new UserPrimaryInfoDTO(null, "valid_login", "Valid_Pass_123"));
-		String invalidLogin = mapper.writeValueAsString(new UserPrimaryInfoDTO("valid_email@dev.ru", "=invalid_login=", "Valid_Pass_123"));
-		String nullLogin = mapper.writeValueAsString(new UserPrimaryInfoDTO("valid_email@dev.ru", null, "Valid_Pass_123"));
-		String invalidPassword = mapper.writeValueAsString(new UserPrimaryInfoDTO("valid_email@dev.ru", "valid_login", "invalid"));
-		String nullPassword = mapper.writeValueAsString(new UserPrimaryInfoDTO("valid_email@dev.ru", "valid_login", null));
+		String invalidEmail = mapper.writeValueAsString(new RegisterRequest("not_valid_email", "valid_login", "Anton", "Valid_Pass_123"));
+		String nullEmail = mapper.writeValueAsString(new RegisterRequest(null, "valid_login", "Anton", "Valid_Pass_123"));
+		String invalidLogin = mapper.writeValueAsString(new RegisterRequest("valid_email@dev.ru", "=invalid_login=", "Anton", "Valid_Pass_123"));
+		String nullLogin = mapper.writeValueAsString(new RegisterRequest("valid_email@dev.ru", null, "Anton", "Valid_Pass_123"));
+		String invalidPassword = mapper.writeValueAsString(new RegisterRequest("valid_email@dev.ru", "valid_login", "Anton", "invalid"));
+		String nullPassword = mapper.writeValueAsString(new RegisterRequest("valid_email@dev.ru", "valid_login", "Anton", null));
 		mockMvc.perform(post(SetupMethods.AUTH_API_USER_URL).contentType(MediaType.APPLICATION_JSON).content(invalidEmail))
 				.andExpect(status().isBadRequest());
 		mockMvc.perform(post(SetupMethods.AUTH_API_USER_URL).contentType(MediaType.APPLICATION_JSON).content(nullEmail))
@@ -83,11 +108,11 @@ public class ValidationIntegrationTests {
 
 	@Test
 	public void updateWithInvalidDataTest() throws Exception {
-		Cookie cookie = SetupMethods.registerUser(mockMvc);
-		String invalidPhoneNumber = mapper.writeValueAsString(new UserSecondaryInfoDTO("desc", "+372587345", "url_tag"));
-		String nullPhoneNumber = mapper.writeValueAsString(new UserSecondaryInfoDTO("desc", "", "url_tag"));
-		String invalidUrlTag = mapper.writeValueAsString(new UserSecondaryInfoDTO("desc", "+79217642904", "_invalid_url_tag"));
-		String nullUrlTag = mapper.writeValueAsString(new UserSecondaryInfoDTO("desc", "+79217642904", ""));
+		Cookie cookie = SetupMethods.activateUser(mockMvc, SetupMethods.registerUser(mockMvc));
+		String invalidPhoneNumber = mapper.writeValueAsString(new UpdateInfoRequest("desc", "+372587345", "url_tag"));
+		String nullPhoneNumber = mapper.writeValueAsString(new UpdateInfoRequest("desc", "", "url_tag"));
+		String invalidUrlTag = mapper.writeValueAsString(new UpdateInfoRequest("desc", "+79217642904", "_invalid_url_tag"));
+		String nullUrlTag = mapper.writeValueAsString(new UpdateInfoRequest("desc", "+79217642904", ""));
 		mockMvc.perform(patch(SetupMethods.AUTH_API_USER_URL).cookie(cookie).contentType(MediaType.APPLICATION_JSON).content(invalidPhoneNumber))
 				.andExpect(status().isBadRequest());
 		mockMvc.perform(patch(SetupMethods.AUTH_API_USER_URL).cookie(cookie).contentType(MediaType.APPLICATION_JSON).content(nullPhoneNumber))
@@ -104,7 +129,7 @@ public class ValidationIntegrationTests {
 		String nullLogin = mapper.writeValueAsString(new LoginRequest(null, "Test_Pass_0"));
 		String invalidPassword = mapper.writeValueAsString(new LoginRequest("test_login", "notcorrcetpass"));
 		String nullPassword = mapper.writeValueAsString(new LoginRequest("test_login", null));
-		Cookie cookie = SetupMethods.registerUser(mockMvc);
+		Cookie cookie = SetupMethods.activateUser(mockMvc, SetupMethods.registerUser(mockMvc));
 		mockMvc.perform(get(SetupMethods.AUTH_API_LOGOUT_URL).cookie(cookie)).andExpect(status().isOk());
 		mockMvc.perform(post(SetupMethods.AUTH_API_LOGIN_URL).contentType(MediaType.APPLICATION_JSON).content(invalidLogin))
 				.andExpect(status().isBadRequest());
@@ -128,7 +153,7 @@ public class ValidationIntegrationTests {
 		String nullNewPasswordNoAccess = mapper.writeValueAsString(new RestorePasswordNoAccessDto(null, "New_Test_Pass_0"));
 		String invalidNewPasswordConfirmationNoAccess = mapper.writeValueAsString(new RestorePasswordNoAccessDto("New_Test_Pass_0", "newpass"));
 		String nullNewPasswordConfirmationNoAccess = mapper.writeValueAsString(new RestorePasswordNoAccessDto("New_Test_Pass_0", null));
-		Cookie cookie = SetupMethods.registerUser(mockMvc);
+		Cookie cookie = SetupMethods.activateUser(mockMvc, SetupMethods.registerUser(mockMvc));
 		mockMvc.perform(patch(SetupMethods.UPDATE_PASSWORD_URL).cookie(cookie).contentType(MediaType.APPLICATION_JSON).content(invalidOldPassword))
 				.andExpect(status().isBadRequest());
 		mockMvc.perform(patch(SetupMethods.UPDATE_PASSWORD_URL).cookie(cookie).contentType(MediaType.APPLICATION_JSON).content(nullOldPassword))
@@ -155,6 +180,6 @@ public class ValidationIntegrationTests {
 
 	@AfterEach
 	void cleanUpTable() {
-		JdbcTestUtils.deleteFromTables(jdbcTemplate, "users_data");
+		JdbcTestUtils.deleteFromTables(jdbcTemplate, "users");
 	}
 }

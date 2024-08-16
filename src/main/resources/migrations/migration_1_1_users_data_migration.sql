@@ -1,12 +1,13 @@
 --liquibase formatted sql
 
---changeset init_users_data_table:1.1
+--changeset init_users_table:1.1
 
-CREATE TABLE users_data
+CREATE TABLE users
 (
-    id UUID PRIMARY KEY,
+    id uuid PRIMARY KEY,
     email varchar(50) NOT NULL UNIQUE,
     login varchar(50) NOT NULL UNIQUE,
+    name varchar(50) NOT NULL,
     password varchar(257) NOT NULL,
     is_activated boolean,
     description varchar(1000),
@@ -15,4 +16,4 @@ CREATE TABLE users_data
     token varchar(100) UNIQUE
 );
 
---rollback DROP TABLE users_data;
+--rollback DROP TABLE users;

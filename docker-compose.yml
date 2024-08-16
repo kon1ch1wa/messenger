@@ -2,12 +2,16 @@ version: '3.3'
 
 services:
   app:
-    build: .
+    build:
+      context: .
+      dockerfile: app.Dockerfile
     ports:
       - "8080:8080"
     depends_on:
-      - db
-      - rabbit
+      db:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
   db:
     image: postgres:15.3
     ports:
@@ -16,14 +20,24 @@ services:
       - POSTGRES_USER=admin
       - POSTGRES_PASSWORD=admin
       - POSTGRES_DB=messenger_db
-  rabbit:
-    image: rabbitmq:3.12.4-management
+  rabbitmq:
     hostname: rabbitmq
-    command: rabbitmq-plugins enable rabbitmq_web_stomp
+    build:
+      context: .
+      dockerfile: rabbitmq.Dockerfile
     restart: always
     ports:
+      - "61613:61613"
       - "15672:15672"
       - "5672:5672"
     environment:
       - RABBITMQ_DEFAULT_USER=RMQAdmin
       - RABBITMQ_DEFAULT_PASS=RMQPassword
+      - HOSTNAME=rabbitmq
+      - NODENAME=rabbitmq@rabbitmq
+      - RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS=-rabbit disk_free_limit 2147483648
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 30s
+      timeout: 30s
+      retries: 3

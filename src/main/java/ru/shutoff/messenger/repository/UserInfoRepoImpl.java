@@ -6,6 +6,7 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
+import org.springframework.lang.NonNull;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Component;
 
@@ -17,31 +18,21 @@ import ru.shutoff.messenger.model.User;
 @RequiredArgsConstructor
 @Component
 public class UserInfoRepoImpl implements UserInfoRepo {
-	private static final String SQL_SAVE = "insert into users_data(id, email, login, password, is_activated, token) values (?, ?, ?, ?, ?, ?)";
-	private static final String SQL_GET_USER_BY_TOKEN = "select id, email, login, password, is_activated, description, phone_number, url_tag, token from users_data where token=?";
-	private static final String SQL_UPDATE = "update users_data set password=?, is_activated=?, description=coalesce(?, description), phone_number=coalesce(?, phone_number), url_tag=coalesce(?, url_tag), token=? where id=?";
-	private static final String SQL_GET_USER_BY_ID = "select id, email, login, password, is_activated, description, phone_number, url_tag, token from users_data where id=?";
-	private static final String SQL_GET_USER_BY_EMAIL = "select id, email, login, password, is_activated, description, phone_number, url_tag, token from users_data where email=?";
-	private static final String SQL_GET_USER_BY_LOGIN = "select id, email, login, password, is_activated, description, phone_number, url_tag, token from users_data where login=?";
-	private static final String SQL_GET_LOGIN_BY_EMAIL = "select login from users_data where email=?";
-	private static final String SQL_GET_EMAIL_BY_LOGIN = "select email from users_data where login=?";
+	private static final String SQL_SAVE = "insert into users(id, email, login, name, password, is_activated, token) values (?, ?, ?, ?, ?, ?, ?)";
+	private static final String SQL_UPDATE = "update users set password=?, is_activated=?, description=coalesce(?, description), phone_number=coalesce(?, phone_number), url_tag=coalesce(?, url_tag), token=? where id=?";
+	private static final String SQL_GET_USER_BY_ID = "select * from users where id=?";
+	private static final String SQL_GET_USER_BY_EMAIL = "select * from users where email=?";
+	private static final String SQL_GET_USER_BY_LOGIN = "select * from users where login=?";
+	private static final String SQL_GET_USER_BY_TAG = "select * from users where url_tag=?";
+	private static final String SQL_GET_USER_BY_TOKEN = "select * from users where token=?";
 
 	private final JdbcTemplate jdbcTemplate;
 
-	private final RowMapper<User> primaryUserMapper = (rs, rowNum) -> new User(
+	private final @NonNull RowMapper<User> userMapper = (rs, rowNum) -> new User(
 			rs.getObject("id", UUID.class),
 			rs.getString("email"),
 			rs.getString("login"),
-			rs.getString("password"),
-			rs.getBoolean("is_activated"),
-			null, null, null,
-			rs.getString("token")
-	);
-
-	private final RowMapper<User> userMapper = (rs, rowNum) -> new User(
-			rs.getObject("id", UUID.class),
-			rs.getString("email"),
-			rs.getString("login"),
+			rs.getString("name"),
 			rs.getString("password"),
 			rs.getBoolean("is_activated"),
 			rs.getString("description"),
@@ -53,18 +44,10 @@ public class UserInfoRepoImpl implements UserInfoRepo {
 	@Override
 	public void save(User user) {
 		try {
-			jdbcTemplate.update(SQL_SAVE, user.getId(), user.getEmail(), user.getLogin(), user.getPassword(), user.isActivated());
-		} catch (DuplicateKeyException ex) {
-			throw new DuplicateUserException("This email or login are already taken");
-		}
-	}
-
-	@Override
-	public User getPrimary(String token) {
-		try {
-			return jdbcTemplate.queryForObject(SQL_GET_USER_BY_TOKEN, primaryUserMapper, token);
+			jdbcTemplate.update(SQL_SAVE, user.getId(), user.getEmail(), user.getLogin(), user.getName(), user.getPassword(), user.isActivated(), user.getToken());
 		} catch (DataAccessException ex) {
-			throw new InvalidTokenException(ex.getMessage());
+			String err = String.format("User with this email or login already exists: %s", ex.getMessage());
+			throw new DuplicateUserException(err);
 		}
 	}
 
@@ -80,7 +63,7 @@ public class UserInfoRepoImpl implements UserInfoRepo {
 	}
 
 	@Override
-	public User getById(UUID userId) {
+	public User getById(String userId) {
 		try {
 			return jdbcTemplate.queryForObject(SQL_GET_USER_BY_ID, userMapper, userId);
 		} catch (DataAccessException ex) {
@@ -107,20 +90,20 @@ public class UserInfoRepoImpl implements UserInfoRepo {
 	}
 
 	@Override
-	public String getLoginByEmail(String email) {
+	public User getByUrlTag(String urlTag) {
 		try {
-			return jdbcTemplate.queryForObject(SQL_GET_LOGIN_BY_EMAIL, String.class, email);
+			return jdbcTemplate.queryForObject(SQL_GET_USER_BY_TAG, userMapper, urlTag);
 		} catch (DataAccessException ex) {
-			throw new UsernameNotFoundException("No user with this email");
+			throw new UsernameNotFoundException("No user with this url tag");
 		}
 	}
 
 	@Override
-	public String getEmailByLogin(String login) {
+	public User getByUnqiueToken(String token) {
 		try {
-			return jdbcTemplate.queryForObject(SQL_GET_EMAIL_BY_LOGIN, String.class, login);
+			return jdbcTemplate.queryForObject(SQL_GET_USER_BY_TOKEN, userMapper, token);
 		} catch (DataAccessException ex) {
-			throw new UsernameNotFoundException("No user with this login");
+			throw new InvalidTokenException(ex.getMessage());
 		}
 	}
 }

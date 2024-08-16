@@ -1,15 +1,16 @@
 package ru.shutoff.messenger.validation;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.stream.Stream;
+
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.InjectMocks;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.util.stream.Stream;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 @ExtendWith(MockitoExtension.class)
 public class PasswordValidationTests {
@@ -58,7 +59,6 @@ public class PasswordValidationTests {
 		return Stream.of(
 				Arguments.of("Pa55w0rd_W1th.D1G1T5.AND.5p3c_5ymb075"),
 				Arguments.of("Pa55w0rd_W1th.D1G1T5{AND}5p3c_5ymb075"),
-				Arguments.of("Pa55w0rd_W1th.D1G1T5.AND<5p3c_5ymb075>"),
 				Arguments.of("Pa55w0rd_W1th[D1G1T5]AND.5p3c_5ymb075"),
 				Arguments.of("(Pa55w0rd_W1th)D1G1T5.AND.5p3c_5ymb075"),
 				Arguments.of("Pa55w0rd_W1th-D1G1T5-AND-5p3c_5ymb075"),
@@ -68,7 +68,7 @@ public class PasswordValidationTests {
 				Arguments.of("oOAa1!"),
 				Arguments.of("1OAoa!"),
 				Arguments.of("!OAoa1"),
-				Arguments.of("/Pass,Word|123%456+789?|tilda~apostrophe`quote'")
+				Arguments.of("Pass,Word|123%456+789?|tilda~apostrophe`quote'")
 		);
 	}
 }

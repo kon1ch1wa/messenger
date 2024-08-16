@@ -11,15 +11,21 @@ import static ru.shutoff.messenger.setup.SetupMethods.AUTH_API_LOGOUT_URL;
 import static ru.shutoff.messenger.setup.SetupMethods.LOGIN;
 import static ru.shutoff.messenger.setup.SetupMethods.PASS;
 import static ru.shutoff.messenger.setup.SetupMethods.PING_URL;
+import static ru.shutoff.messenger.setup.SetupMethods.activateUser;
 import static ru.shutoff.messenger.setup.SetupMethods.registerUser;
 
 import java.util.concurrent.TimeUnit;
 
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.springframework.amqp.rabbit.core.RabbitAdmin;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -28,7 +34,6 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.jdbc.JdbcTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -43,18 +48,36 @@ import ru.shutoff.messenger.setup.TestConfiguration;
 @Import(TestConfiguration.class)
 @AutoConfigureMockMvc
 public class JwtTokenIntegrationTests {
-	@Container
-	private static final PostgreSQLContainer<?> container = SetupMethods.container;
+	public static final PostgreSQLContainer<?> postgresContainer = new PostgreSQLContainer<>(SetupMethods.postgresImageName)
+			.withUsername("admin")
+			.withPassword("admin")
+			.withDatabaseName("messenger_db");
+
+	@MockBean
+	private RabbitTemplate rabbitTemplate;
+
+	@MockBean
+	private RabbitAdmin rabbitAdmin;
+
+	@BeforeAll
+	static void beforeAll() {
+		postgresContainer.start();
+	}
+
+	@AfterAll
+	static void afterAll() {
+		postgresContainer.stop();
+		postgresContainer.close();
+	}
 
 	@DynamicPropertySource
 	static void registerProps(DynamicPropertyRegistry registry) {
-		registry.add("spring.datasource.url", container::getJdbcUrl);
-		registry.add("spring.datasource.username", container::getUsername);
-		registry.add("spring.datasource.password", container::getPassword);
-		registry.add("spring.liquibase.url", container::getJdbcUrl);
-		registry.add("spring.liquibase.user", container::getUsername);
-		registry.add("spring.liquibase.password", container::getPassword);
-		registry.add("jwt.expiration_time", () -> "2000");
+		registry.add("spring.datasource.url", postgresContainer::getJdbcUrl);
+		registry.add("spring.datasource.username", postgresContainer::getUsername);
+		registry.add("spring.datasource.password", postgresContainer::getPassword);
+		registry.add("spring.liquibase.url", postgresContainer::getJdbcUrl);
+		registry.add("spring.liquibase.user", postgresContainer::getUsername);
+		registry.add("spring.liquibase.password", postgresContainer::getPassword);
 	}
 
 	@Autowired
@@ -71,7 +94,7 @@ public class JwtTokenIntegrationTests {
 
 	@Test
 	void runningContainerTest() {
-		assertTrue(container.isRunning());
+		assertTrue(postgresContainer.isRunning());
 	}
 
 	@Test
@@ -83,14 +106,14 @@ public class JwtTokenIntegrationTests {
 
 	@Test
 	void pingAuthorizedCookieTest() throws Exception {
-		Cookie cookie = registerUser(mockMvc);
+		Cookie cookie = activateUser(mockMvc, registerUser(mockMvc));
 		mockMvc.perform(get(PING_URL).cookie(cookie)).andExpect(status().isOk());
 	}
 
 	@Test
 	void pingUpdatingCookieTest() throws Exception {
 		mockMvc.perform(get(PING_URL)).andExpect(status().isUnauthorized());
-		Cookie cookie = registerUser(mockMvc);
+		Cookie cookie = activateUser(mockMvc, registerUser(mockMvc));
 		Cookie cookieNew = mockMvc.perform(get(PING_URL).cookie(cookie))
 				.andExpect(status().isOk()).andReturn().getResponse().getCookie(jwtCookieName);
 		assertNotNull(cookieNew);
@@ -99,7 +122,7 @@ public class JwtTokenIntegrationTests {
 
 	@Test
 	void pingUpdatingCookieLifecycleTest() throws Exception {
-		Cookie cookie = registerUser(mockMvc);
+		Cookie cookie = activateUser(mockMvc, registerUser(mockMvc));
 
 		cookie = mockMvc.perform(get(PING_URL).cookie(cookie))
 				.andExpect(status().isOk()).andReturn().getResponse().getCookie(jwtCookieName);
@@ -113,7 +136,7 @@ public class JwtTokenIntegrationTests {
 	@Test
 	void loginTest() throws Exception {
 		mockMvc.perform(get(AUTH_API_LOGOUT_URL)).andExpect(status().isUnauthorized());
-		Cookie cookie = registerUser(mockMvc);
+		Cookie cookie = activateUser(mockMvc, registerUser(mockMvc));
 
 		cookie = mockMvc.perform(get(PING_URL).cookie(cookie))
 				.andExpect(status().isOk()).andReturn().getResponse().getCookie(jwtCookieName);
@@ -142,7 +165,7 @@ public class JwtTokenIntegrationTests {
 	@Test
 	void logoutTest() throws Exception {
 		mockMvc.perform(get(AUTH_API_LOGOUT_URL)).andExpect(status().isUnauthorized());
-		Cookie cookie = registerUser(mockMvc);
+		Cookie cookie = activateUser(mockMvc, registerUser(mockMvc));
 		cookie = mockMvc.perform(get(PING_URL).cookie(cookie))
 				.andExpect(status().isOk()).andReturn().getResponse().getCookie(jwtCookieName);
 		cookie = mockMvc.perform(get(AUTH_API_LOGOUT_URL).cookie(cookie)).andExpect(status().isOk())
@@ -152,6 +175,6 @@ public class JwtTokenIntegrationTests {
 
 	@AfterEach
 	void cleanUpTable() {
-		JdbcTestUtils.deleteFromTables(jdbcTemplate, "users_data");
+		JdbcTestUtils.deleteFromTables(jdbcTemplate, "users");
 	}
 }

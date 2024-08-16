@@ -2,8 +2,11 @@ HELP.md
 target/
 .mvn/
 .idea
+.vscode/
 *.iml
 build/
 cleaning.sh
 .vscode/
 *application.yml
+src/main/resources/static
+src/main/resources/templates

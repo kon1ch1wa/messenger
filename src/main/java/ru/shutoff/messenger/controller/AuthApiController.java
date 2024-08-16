@@ -1,7 +1,14 @@
 package ru.shutoff.messenger.controller;
 
 import org.springframework.data.util.Pair;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.CookieValue;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
@@ -12,8 +19,8 @@ import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import ru.shutoff.messenger.dto.LoginRequest;
-import ru.shutoff.messenger.dto.UserPrimaryInfoDTO;
-import ru.shutoff.messenger.dto.UserSecondaryInfoDTO;
+import ru.shutoff.messenger.dto.RegisterRequest;
+import ru.shutoff.messenger.dto.UpdateInfoRequest;
 import ru.shutoff.messenger.model.User;
 import ru.shutoff.messenger.security.JwtUtils;
 import ru.shutoff.messenger.service.AuthApiService;
@@ -26,8 +33,8 @@ public class AuthApiController {
     private final JwtUtils jwtUtils;
 
     @PostMapping("/user")
-    public User registerUser(@Valid @RequestBody UserPrimaryInfoDTO dto) {
-        return service.register(dto.email(), dto.login(), dto.password());
+    public User registerUser(@Valid @RequestBody RegisterRequest dto) {
+        return service.register(dto.email(), dto.login(), dto.name(), dto.password());
     }
 
     @GetMapping("/user")
@@ -39,20 +46,19 @@ public class AuthApiController {
 
     @PatchMapping("/user")
     public User updateUser(
-            @Valid @RequestBody UserSecondaryInfoDTO dto,
+            @Valid @RequestBody UpdateInfoRequest dto,
+            @CookieValue(name = JwtUtils.JwtCookieName, required = true) Cookie cookie,
             HttpServletRequest request,
             HttpServletResponse response
     ) {
-        Cookie cookie = jwtUtils.getJwtCookieFromRequest(request);
         User user = service.updateUser(cookie.getValue(), dto.description(), dto.phoneNumber(), dto.urlTag());
-        jwtUtils.refreshJwtToken(cookie.getValue(), cookie);
+        jwtUtils.refreshJwtToken(cookie);
         response.addCookie(cookie);
         return user;
     }
 
     @GetMapping("/logout")
-    public void logout(HttpServletRequest request, HttpServletResponse response) {
-        Cookie cookie = jwtUtils.getJwtCookieFromRequest(request);
+    public void logout(@CookieValue(name = JwtUtils.JwtCookieName, required = true) Cookie cookie, HttpServletResponse response) {
         service.logout(cookie);
         response.addCookie(cookie);
     }

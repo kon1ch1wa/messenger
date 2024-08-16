@@ -6,6 +6,8 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
+import ru.shutoff.messenger.chat_logic.exception.ChatRoomNotFoundException;
+import ru.shutoff.messenger.chat_logic.exception.MessageNotFoundException;
 import ru.shutoff.messenger.exception.DuplicateUserException;
 import ru.shutoff.messenger.exception.InvalidTokenException;
 import ru.shutoff.messenger.exception.NotAuthorizedException;
@@ -26,6 +28,14 @@ public class BaseController {
 	}
 	@ExceptionHandler(UsernameNotFoundException.class)
 	public ResponseEntity<String> handleNotFoundException(UsernameNotFoundException ex) {
+		return new ResponseEntity<>(ex.getMessage(), HttpStatus.NOT_FOUND);
+	}
+	@ExceptionHandler(MessageNotFoundException.class)
+	public ResponseEntity<String> handleNotFoundException(MessageNotFoundException ex) {
+		return new ResponseEntity<>(ex.getMessage(), HttpStatus.NOT_FOUND);
+	}
+	@ExceptionHandler(ChatRoomNotFoundException.class)
+	public ResponseEntity<String> handleNotFoundException(ChatRoomNotFoundException ex) {
 		return new ResponseEntity<>(ex.getMessage(), HttpStatus.NOT_FOUND);
 	}
 }

@@ -4,25 +4,25 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import org.springframework.data.util.Pair;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
-import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.shaded.com.fasterxml.jackson.core.JsonProcessingException;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
+import org.testcontainers.utility.DockerImageName;
 
 import jakarta.servlet.http.Cookie;
-import ru.shutoff.messenger.dto.UserPrimaryInfoDTO;
-import ru.shutoff.messenger.dto.UserSecondaryInfoDTO;
+import ru.shutoff.messenger.dto.RegisterRequest;
+import ru.shutoff.messenger.dto.UpdateInfoRequest;
 import ru.shutoff.messenger.model.User;
 
 public class SetupMethods {
-	public static final PostgreSQLContainer<?> container = new PostgreSQLContainer<>("postgres:15.3")
-			.withUsername("admin")
-			.withPassword("admin")
-			.withDatabaseName("messenger_db");
+	public static DockerImageName postgresImageName = DockerImageName.parse("postgres:latest");
+	public static DockerImageName rabbitImageName = DockerImageName.parse("rabbitmq:latest");
 
 	public static final String EMAIL = "spring.email.receiver.daemon@gmail.com";
 	public static final String LOGIN = "test_login";
+	public static final String NAME = "Anton";
 	public static final String PASS = "Test_Pass_0";
 	public static final String DESC = "test_description";
 	public static final String PHONE_NUMBER = "+79217642904";
@@ -39,40 +39,58 @@ public class SetupMethods {
 	public static final String UPDATE_PASSWORD_URL = "/updateCredsApi/restorePassword";
 
 	public static String wrapPrimaryInfo() throws JsonProcessingException {
-		UserPrimaryInfoDTO info = new UserPrimaryInfoDTO(EMAIL, LOGIN, PASS);
+		RegisterRequest info = new RegisterRequest(EMAIL, LOGIN, NAME, PASS);
 		return new ObjectMapper().writeValueAsString(info);
 	}
 
 	public static String wrapSecondaryInfo() throws JsonProcessingException {
-		UserSecondaryInfoDTO info = new UserSecondaryInfoDTO(DESC, PHONE_NUMBER, URL_TAG);
+		UpdateInfoRequest info = new UpdateInfoRequest(DESC, PHONE_NUMBER, URL_TAG);
 		return new ObjectMapper().writeValueAsString(info);
 	}
 
-	public static String wrapPrimaryInfo(String email, String login, String password) throws JsonProcessingException {
-		UserPrimaryInfoDTO info = new UserPrimaryInfoDTO(email, login, password);
+	public static String wrapPrimaryInfo(String email, String login, String name, String password) throws JsonProcessingException {
+		RegisterRequest info = new RegisterRequest(email, login, name, password);
 		return new ObjectMapper().writeValueAsString(info);
 	}
 
 	public static String wrapSecondaryInfo(String description, String phoneNumber, String urlTag) throws JsonProcessingException {
-		UserSecondaryInfoDTO info = new UserSecondaryInfoDTO(description, phoneNumber, urlTag);
+		UpdateInfoRequest info = new UpdateInfoRequest(description, phoneNumber, urlTag);
 		return new ObjectMapper().writeValueAsString(info);
 	}
 
-	public static Cookie registerUser(MockMvc mockMvc) throws Exception {
+	public static User registerUser(MockMvc mockMvc) throws Exception {
 		String jsonPrimary = wrapPrimaryInfo();
 		String content = mockMvc.perform(post(AUTH_API_USER_URL).contentType(MediaType.APPLICATION_JSON).content(jsonPrimary))
 				.andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-		User user = new ObjectMapper().readValue(content, User.class);
+		return new ObjectMapper().readValue(content, User.class);
+	}
+
+	public static User registerAnotherUser(MockMvc mockMvc) throws Exception {
+		String jsonPrimary = wrapPrimaryInfo("spring@dev.ru", "test_another_login", "Vladimir", "Test_Another_Pass_0");
+		String content = mockMvc.perform(post(AUTH_API_USER_URL).contentType(MediaType.APPLICATION_JSON).content(jsonPrimary))
+				.andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+		return new ObjectMapper().readValue(content, User.class);
+	}
+
+	public static User registerThirdUser(MockMvc mockMvc) throws Exception {
+		String jsonPrimary = wrapPrimaryInfo("spring@gov.ru", "test_third_login", "Vitaliy", "Test_Third_Pass_0");
+		String content = mockMvc.perform(post(AUTH_API_USER_URL).contentType(MediaType.APPLICATION_JSON).content(jsonPrimary))
+				.andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+		return new ObjectMapper().readValue(content, User.class);
+	}
+
+	public static Cookie activateUser(MockMvc mockMvc, User user) throws Exception {
 		return mockMvc.perform(get(AUTH_API_USER_URL).param("token", user.getToken()))
 				.andExpect(status().isOk()).andReturn().getResponse().getCookie("JwtToken");
 	}
 
-	public static Cookie registerAnotherUser(MockMvc mockMvc) throws Exception {
-		String jsonPrimary = wrapPrimaryInfo("spring@dev.ru", "test_another_login", "Test_Another_Pass_0");
+	public static Pair<User, Cookie> registerWithPairReturned(MockMvc mockMvc, String email, String login, String name, String password) throws Exception {
+		String jsonPrimary = wrapPrimaryInfo(email, login, name, password);
 		String content = mockMvc.perform(post(AUTH_API_USER_URL).contentType(MediaType.APPLICATION_JSON).content(jsonPrimary))
 				.andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 		User user = new ObjectMapper().readValue(content, User.class);
-		return mockMvc.perform(get(AUTH_API_USER_URL).param("token", user.getToken()))
-				.andExpect(status().isOk()).andReturn().getResponse().getCookie("JwtToken");
+		var response = mockMvc.perform(get(AUTH_API_USER_URL).param("token", user.getToken()))
+				.andExpect(status().isOk()).andReturn().getResponse();
+		return Pair.of(new ObjectMapper().readValue(response.getContentAsString(), User.class), response.getCookie("JwtToken"));
 	}
 }
