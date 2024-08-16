@@ -23,9 +23,12 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.springframework.amqp.rabbit.core.RabbitAdmin;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -34,12 +37,11 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.jdbc.JdbcTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.containers.RabbitMQContainer;
-import org.testcontainers.containers.startupcheck.OneShotStartupCheckStrategy;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 
 import jakarta.servlet.http.Cookie;
+import lombok.extern.slf4j.Slf4j;
 import ru.shutoff.messenger.MessengerApplication;
 import ru.shutoff.messenger.dto.RestorePasswordNoAccessDto;
 import ru.shutoff.messenger.dto.RestorePasswordWithAccessDto;
@@ -51,28 +53,28 @@ import ru.shutoff.messenger.setup.TestConfiguration;
 @SpringBootTest(classes = MessengerApplication.class)
 @Import(TestConfiguration.class)
 @AutoConfigureMockMvc
+@Slf4j
 public class ForgotAndUpdateCredsIntegrationTests {
 	public static final PostgreSQLContainer<?> postgresContainer = new PostgreSQLContainer<>(SetupMethods.postgresImageName)
 			.withUsername("admin")
 			.withPassword("admin")
 			.withDatabaseName("messenger_db");
 
-	public static final RabbitMQContainer rabbitMqContainer = new RabbitMQContainer(SetupMethods.rabbitImageName)
-			.withExposedPorts(5672, 15672, 61613);
+	@MockBean
+	private RabbitTemplate rabbitTemplate;
+
+	@MockBean
+	private RabbitAdmin rabbitAdmin;
 
 	@BeforeAll
 	static void beforeAll() {
 		postgresContainer.start();
-		rabbitMqContainer.setStartupCheckStrategy(new OneShotStartupCheckStrategy());
-		rabbitMqContainer.start();
 	}
 
 	@AfterAll
 	static void afterAll() {
 		postgresContainer.stop();
 		postgresContainer.close();
-		rabbitMqContainer.stop();
-		rabbitMqContainer.close();
 	}
 
 	@DynamicPropertySource
@@ -83,11 +85,6 @@ public class ForgotAndUpdateCredsIntegrationTests {
 		registry.add("spring.liquibase.url", postgresContainer::getJdbcUrl);
 		registry.add("spring.liquibase.user", postgresContainer::getUsername);
 		registry.add("spring.liquibase.password", postgresContainer::getPassword);
-		registry.add("spring.rabbitmq.username", rabbitMqContainer::getAdminUsername);
-		registry.add("spring.rabbitmq.password", rabbitMqContainer::getAdminPassword);
-		registry.add("spring.rabbitmq.port", () -> rabbitMqContainer.getMappedPort(5672));
-		registry.add("spring.rabbitmq.stomp-port", () -> rabbitMqContainer.getMappedPort(61613));
-		registry.add("spring.rabbitmq.host", () -> "localhost");
 	}
 
 	@Autowired
@@ -104,7 +101,6 @@ public class ForgotAndUpdateCredsIntegrationTests {
 	@Test
 	void runningContainerTest() {
 		assertTrue(postgresContainer.isRunning());
-		assertTrue(rabbitMqContainer.isRunning());
 	}
 
 	@Test
@@ -183,6 +179,6 @@ public class ForgotAndUpdateCredsIntegrationTests {
 
 	@AfterEach
 	void cleanUpTable() {
-		JdbcTestUtils.deleteFromTables(jdbcTemplate, "users_data");
+		JdbcTestUtils.deleteFromTables(jdbcTemplate, "users");
 	}
 }

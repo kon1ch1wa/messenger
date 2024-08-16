@@ -23,8 +23,8 @@ public class MessageController {
 
     @MessageMapping("/send")
     public void sendMessage(@NonNull MessageDto messageDto) {
-        UUID chatRoomId = UUID.fromString(messageDto.chatRoomId());
-        UUID senderId = UUID.fromString(messageDto.senderId());
+        UUID chatRoomId = messageDto.chatRoomId();
+        UUID senderId = messageDto.senderId();
         String content = messageDto.content();
         Timestamp sendDate = messageDto.sendDate();
         if (chatRoomId == null || senderId == null || content == null || sendDate == null) {

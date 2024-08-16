@@ -31,11 +31,6 @@ public class Message {
 	}
 
 	public MessageDto toDto() {
-		String _senderId = senderId.toString();
-		String _chatRoomId = chatRoomId.toString();
-		if (_senderId == null || _chatRoomId == null) {
-			throw new NullPointerException("Invalid senderId or chatRoomId");
-		}
-		return new MessageDto(content, _senderId, _chatRoomId, sendDate);
+		return new MessageDto(chatRoomId, senderId, content, sendDate);
 	}
 }

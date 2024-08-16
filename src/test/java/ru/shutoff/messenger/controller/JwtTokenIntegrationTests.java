@@ -12,7 +12,6 @@ import static ru.shutoff.messenger.setup.SetupMethods.LOGIN;
 import static ru.shutoff.messenger.setup.SetupMethods.PASS;
 import static ru.shutoff.messenger.setup.SetupMethods.PING_URL;
 import static ru.shutoff.messenger.setup.SetupMethods.activateUser;
-import static ru.shutoff.messenger.setup.SetupMethods.rabbitImageName;
 import static ru.shutoff.messenger.setup.SetupMethods.registerUser;
 
 import java.util.concurrent.TimeUnit;
@@ -21,9 +20,12 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.springframework.amqp.rabbit.core.RabbitAdmin;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -32,7 +34,6 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.jdbc.JdbcTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.containers.RabbitMQContainer;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -52,25 +53,21 @@ public class JwtTokenIntegrationTests {
 			.withPassword("admin")
 			.withDatabaseName("messenger_db");
 
-	public static final RabbitMQContainer rabbitMqContainer = new RabbitMQContainer(rabbitImageName)
-			.withPluginsEnabled("rabbitmq_stomp", "rabbitmq_web_stomp")
-			.withEnv("RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS", "-rabbit disk_free_limit 2147483648")
-			.withEnv("NODENAME", "rabbitmq@rabbitmq")
-			.withEnv("HOSTNAME", "rabbitmq")
-			.withExposedPorts(5672, 15672, 61613);
+	@MockBean
+	private RabbitTemplate rabbitTemplate;
+
+	@MockBean
+	private RabbitAdmin rabbitAdmin;
 
 	@BeforeAll
 	static void beforeAll() {
 		postgresContainer.start();
-		rabbitMqContainer.start();
 	}
 
 	@AfterAll
 	static void afterAll() {
 		postgresContainer.stop();
 		postgresContainer.close();
-		rabbitMqContainer.stop();
-		rabbitMqContainer.close();
 	}
 
 	@DynamicPropertySource
@@ -81,11 +78,6 @@ public class JwtTokenIntegrationTests {
 		registry.add("spring.liquibase.url", postgresContainer::getJdbcUrl);
 		registry.add("spring.liquibase.user", postgresContainer::getUsername);
 		registry.add("spring.liquibase.password", postgresContainer::getPassword);
-		registry.add("spring.rabbitmq.username", rabbitMqContainer::getAdminUsername);
-		registry.add("spring.rabbitmq.password", rabbitMqContainer::getAdminPassword);
-		registry.add("spring.rabbitmq.port", () -> rabbitMqContainer.getMappedPort(5672));
-		registry.add("spring.rabbitmq.stomp-port", () -> rabbitMqContainer.getMappedPort(61613));
-		registry.add("spring.rabbitmq.host", () -> "localhost");
 	}
 
 	@Autowired
@@ -183,6 +175,6 @@ public class JwtTokenIntegrationTests {
 
 	@AfterEach
 	void cleanUpTable() {
-		JdbcTestUtils.deleteFromTables(jdbcTemplate, "users_data");
+		JdbcTestUtils.deleteFromTables(jdbcTemplate, "users");
 	}
 }
