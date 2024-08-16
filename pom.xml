@@ -65,6 +65,11 @@
 			<groupId>org.springframework.session</groupId>
 			<artifactId>spring-session-jdbc</artifactId>
 		</dependency>
+		<dependency>
+			<groupId>com.googlecode.libphonenumber</groupId>
+			<artifactId>libphonenumber</artifactId>
+			<version>8.13.18</version>
+		</dependency>
 
 		<!--Security-->
 		<dependency>
@@ -140,6 +145,11 @@
 				<groupId>org.jacoco</groupId>
 				<artifactId>jacoco-maven-plugin</artifactId>
 				<version>${jacoco.version}</version>
+				<configuration>
+					<excludes>
+						<exclude>ru/shutoff/messenger/MessengerApplication*</exclude>
+					</excludes>
+				</configuration>
 				<executions>
 					<execution>
 						<goals>
