@@ -1,33 +1,42 @@
 package ru.shutoff.messenger.repository;
 
-import lombok.Data;
-import lombok.RequiredArgsConstructor;
+import java.util.UUID;
+
 import org.springframework.dao.DataAccessException;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Component;
+
+import lombok.RequiredArgsConstructor;
 import ru.shutoff.messenger.exception.DuplicateUserException;
 import ru.shutoff.messenger.exception.InvalidTokenException;
 import ru.shutoff.messenger.model.User;
 
-import java.util.UUID;
-
 @RequiredArgsConstructor
 @Component
 public class UserInfoRepoImpl implements UserInfoRepo {
-	private static final String SQL_SAVE = "insert into users_data(id, email, login, password, is_activated, token) values (?, ?, ?, ?, ?, ?)";
-	private static final String SQL_GET_USER_BY_TOKEN = "select id, email, login, password, is_activated, description, phone_number, url_tag, token from users_data where token=?";
-	private static final String SQL_UPDATE = "update users_data set password=?, is_activated=?, description=coalesce(?, description), phone_number=coalesce(?, phone_number), url_tag=coalesce(?, url_tag), token=? where id=?";
-	private static final String SQL_GET_USER_BY_ID = "select id, email, login, password, is_activated, description, phone_number, url_tag, token from users_data where id=?";
-	private static final String SQL_GET_USER_BY_EMAIL = "select id, email, login, password, is_activated, description, phone_number, url_tag, token from users_data where email=?";
-	private static final String SQL_GET_USER_BY_LOGIN = "select id, email, login, password, is_activated, description, phone_number, url_tag, token from users_data where login=?";
+	private static final String SQL_PRIMARY_SAVE = "insert into users_data(id, email, login, password, is_activated) values (?, ?, ?, ?, ?)";
+	private static final String SQL_GET_PRIMARY = "select id, email, login, password, is_activated, token from users_data where token=?";
+	private static final String SQL_UPDATE = "update users_data set email=?, login=?, password=?, is_activated=?, description=?, phone_number=?, url_tag=? where id=?";
+	private static final String SQL_GET_USER_BY_ID = "select id, email, login, password, is_activated, description, phone_number, url_tag from users_data where id=?";
+	private static final String SQL_GET_USER_BY_EMAIL = "select id, email, login, password, is_activated, description, phone_number, url_tag from users_data where email=?";
+	private static final String SQL_GET_USER_BY_LOGIN = "select id, email, login, password, is_activated, description, phone_number, url_tag from users_data where login=?";
 	private static final String SQL_GET_LOGIN_BY_EMAIL = "select login from users_data where email=?";
 	private static final String SQL_GET_EMAIL_BY_LOGIN = "select email from users_data where login=?";
 
 	private final JdbcTemplate jdbcTemplate;
+
+	private final RowMapper<User> primaryUserMapper = (rs, rowNum) -> new User(
+			rs.getObject("id", UUID.class),
+			rs.getString("email"),
+			rs.getString("login"),
+			rs.getString("password"),
+			rs.getBoolean("is_activated"),
+			null, null, null,
+			rs.getString("token")
+	);
 
 	private final RowMapper<User> userMapper = (rs, rowNum) -> new User(
 			rs.getObject("id", UUID.class),
@@ -38,22 +47,22 @@ public class UserInfoRepoImpl implements UserInfoRepo {
 			rs.getString("description"),
 			rs.getString("phone_number"),
 			rs.getString("url_tag"),
-			rs.getString("token")
+			null
 	);
 
 	@Override
 	public void save(User user) {
 		try {
-			jdbcTemplate.update(SQL_SAVE, user.getId(), user.getEmail(), user.getLogin(), user.getPassword(), user.isActivated(), user.getToken());
-		} catch (DataAccessException ex) {
-			throw new DuplicateUserException("User with this email or login already exists");
+			jdbcTemplate.update(SQL_PRIMARY_SAVE, user.getId(), user.getEmail(), user.getLogin(), user.getPassword(), user.isActivated());
+		} catch (DuplicateKeyException ex) {
+			throw new DuplicateUserException("This email or login are already taken");
 		}
 	}
 
 	@Override
 	public User getPrimary(String token) {
 		try {
-			return jdbcTemplate.queryForObject(SQL_GET_USER_BY_TOKEN, userMapper, token);
+			return jdbcTemplate.queryForObject(SQL_GET_PRIMARY, primaryUserMapper, token);
 		} catch (DataAccessException ex) {
 			throw new InvalidTokenException(ex.getMessage());
 		}
@@ -62,11 +71,9 @@ public class UserInfoRepoImpl implements UserInfoRepo {
 	@Override
 	public void update(User user) {
 		try {
-			jdbcTemplate.update(SQL_UPDATE, user.getPassword(), user.isActivated(), user.getDescription(), user.getPhoneNumber(), user.getUrlTag(), user.getToken(), user.getId());
-		} catch (DuplicateKeyException ex) {
-			throw new DuplicateUserException("Some data that should be unique is duplicated, please check.");
+			jdbcTemplate.update(SQL_UPDATE, user.getEmail(), user.getLogin(), user.getPassword(), user.isActivated(), user.getDescription(), user.getPhoneNumber(), user.getUrlTag(), user.getId());
 		} catch (DataAccessException ex) {
-			throw new UsernameNotFoundException("No such user");
+			throw new DuplicateUserException("Some data that should be unique is duplicated, please check.");
 		}
 	}
 
