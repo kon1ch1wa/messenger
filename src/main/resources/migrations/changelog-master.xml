@@ -8,4 +8,5 @@
     <include file="migration_1_2_chat_rooms_migration.sql" relativeToChangelogFile="true"/>
     <include file="migration_1_3_user_and_chat_room_migration.sql" relativeToChangelogFile="true"/>
     <include file="migration_1_4_messages_migration.sql" relativeToChangelogFile="true"/>
+    <include file="migration_1_5_files_table_migration.sql" relativeToChangelogFile="true"/>
 </databaseChangeLog>

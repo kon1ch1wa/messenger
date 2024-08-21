@@ -6,11 +6,13 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
-import ru.shutoff.messenger.chat_logic.exception.ChatRoomNotFoundException;
-import ru.shutoff.messenger.chat_logic.exception.MessageNotFoundException;
-import ru.shutoff.messenger.exception.DuplicateUserException;
-import ru.shutoff.messenger.exception.InvalidTokenException;
-import ru.shutoff.messenger.exception.NotAuthorizedException;
+import ru.shutoff.messenger.domain.chat_logic.exception.ChatRoomNotFoundException;
+import ru.shutoff.messenger.domain.chat_logic.exception.MessageNotFoundException;
+import ru.shutoff.messenger.domain.file_handling.exception.InvalidFileDataException;
+import ru.shutoff.messenger.domain.file_handling.exception.InvalidMinioCredentialsException;
+import ru.shutoff.messenger.domain.user_mgmt.exception.DuplicateUserException;
+import ru.shutoff.messenger.domain.user_mgmt.exception.InvalidTokenException;
+import ru.shutoff.messenger.domain.user_mgmt.exception.NotAuthorizedException;
 
 @ControllerAdvice
 public class BaseController {
@@ -37,5 +39,13 @@ public class BaseController {
 	@ExceptionHandler(ChatRoomNotFoundException.class)
 	public ResponseEntity<String> handleNotFoundException(ChatRoomNotFoundException ex) {
 		return new ResponseEntity<>(ex.getMessage(), HttpStatus.NOT_FOUND);
+	}
+	@ExceptionHandler(InvalidFileDataException.class)
+	public ResponseEntity<String> handleInvalidFileDataExceptionException(InvalidFileDataException ex) {
+		return new ResponseEntity<>(ex.getMessage(), HttpStatus.BAD_REQUEST);
+	}
+	@ExceptionHandler(InvalidMinioCredentialsException.class)
+	public ResponseEntity<String> handleInvalidMinioCredentialsExceptionException(InvalidMinioCredentialsException ex) {
+		return new ResponseEntity<>(ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
 	}
 }
