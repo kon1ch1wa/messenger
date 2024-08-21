@@ -127,6 +127,13 @@
 			<scope>runtime</scope>
 		</dependency>
 
+		<!--File Storage-->
+		<dependency>
+			<groupId>io.minio</groupId>
+			<artifactId>minio</artifactId>
+			<version>8.2.1</version>
+		</dependency>
+
 		<!--Dependencies for tests-->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
