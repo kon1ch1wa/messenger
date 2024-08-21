@@ -10,12 +10,10 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.springframework.amqp.rabbit.core.RabbitAdmin;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -28,6 +26,7 @@ import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 
 import jakarta.servlet.http.Cookie;
 import ru.shutoff.messenger.MessengerApplication;
+import ru.shutoff.messenger.domain.user_mgmt.configuration.TestConfiguration;
 import ru.shutoff.messenger.domain.user_mgmt.dto.LoginRequest;
 import ru.shutoff.messenger.domain.user_mgmt.dto.RegisterRequest;
 import ru.shutoff.messenger.domain.user_mgmt.dto.RestorePasswordNoAccessDto;
@@ -37,18 +36,13 @@ import ru.shutoff.messenger.domain.user_mgmt.setup.SetupMethods;
 
 @Testcontainers
 @SpringBootTest(classes = MessengerApplication.class)
+@Import(TestConfiguration.class)
 @AutoConfigureMockMvc
 public class ValidationIntegrationTests {
 	public static final PostgreSQLContainer<?> postgresContainer = new PostgreSQLContainer<>(SetupMethods.postgresImageName)
 			.withUsername("admin")
 			.withPassword("admin")
 			.withDatabaseName("messenger_db");
-
-	@MockBean
-	private RabbitTemplate rabbitTemplate;
-
-	@MockBean
-	private RabbitAdmin rabbitAdmin;
 
 	@BeforeAll
 	static void beforeAll() {

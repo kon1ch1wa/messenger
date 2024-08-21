@@ -14,16 +14,16 @@ import lombok.RequiredArgsConstructor;
 @EnableWebSocketMessageBroker
 @RequiredArgsConstructor
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
-	@Value("${spring.rabbitmq.host}")
+	@Value("${rabbitmq.host}")
 	private String host;
 
-	@Value("${spring.rabbitmq.stomp-port}")
+	@Value("${rabbitmq.stomp-port}")
 	private int port;
 
-	@Value("${spring.rabbitmq.username}")
+	@Value("${rabbitmq.username}")
 	private String username;
 
-	@Value("${spring.rabbitmq.password}")
+	@Value("${rabbitmq.password}")
 	private String password;
 
 	@Override

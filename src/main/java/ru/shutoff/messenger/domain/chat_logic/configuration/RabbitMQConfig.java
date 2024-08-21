@@ -18,22 +18,22 @@ import lombok.RequiredArgsConstructor;
 @Configuration
 @RequiredArgsConstructor
 public class RabbitMQConfig {
-	@Value("${spring.rabbitmq.host}")
+	@Value("${rabbitmq.host}")
 	private String host;
 
-	@Value("${spring.rabbitmq.port}")
+	@Value("${rabbitmq.port}")
 	private int port;
 
-	@Value("${spring.rabbitmq.username}")
+	@Value("${rabbitmq.username}")
 	private String username;
 
-	@Value("${spring.rabbitmq.password}")
+	@Value("${rabbitmq.password}")
 	private String password;
 
-	@Value("${spring.rabbitmq.virtual-host}")
+	@Value("${rabbitmq.virtual-host}")
 	private String vHost;
 
-	@Value("${rabbit.exchange_name}")
+	@Value("${rabbitmq.exchange.name}")
 	private String exchange;
 
 	@Bean
