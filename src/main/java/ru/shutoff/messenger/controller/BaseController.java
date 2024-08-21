@@ -1,4 +1,4 @@
-package ru.shutoff.messenger.domain.user_mgmt.controller;
+package ru.shutoff.messenger.controller;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -8,6 +8,8 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 
 import ru.shutoff.messenger.domain.chat_logic.exception.ChatRoomNotFoundException;
 import ru.shutoff.messenger.domain.chat_logic.exception.MessageNotFoundException;
+import ru.shutoff.messenger.domain.file_handling.exception.InvalidFileDataException;
+import ru.shutoff.messenger.domain.file_handling.exception.InvalidMinioCredentialsException;
 import ru.shutoff.messenger.domain.user_mgmt.exception.DuplicateUserException;
 import ru.shutoff.messenger.domain.user_mgmt.exception.InvalidTokenException;
 import ru.shutoff.messenger.domain.user_mgmt.exception.NotAuthorizedException;
@@ -37,5 +39,13 @@ public class BaseController {
 	@ExceptionHandler(ChatRoomNotFoundException.class)
 	public ResponseEntity<String> handleNotFoundException(ChatRoomNotFoundException ex) {
 		return new ResponseEntity<>(ex.getMessage(), HttpStatus.NOT_FOUND);
+	}
+	@ExceptionHandler(InvalidFileDataException.class)
+	public ResponseEntity<String> handleInvalidFileDataExceptionException(InvalidFileDataException ex) {
+		return new ResponseEntity<>(ex.getMessage(), HttpStatus.BAD_REQUEST);
+	}
+	@ExceptionHandler(InvalidMinioCredentialsException.class)
+	public ResponseEntity<String> handleInvalidMinioCredentialsExceptionException(InvalidMinioCredentialsException ex) {
+		return new ResponseEntity<>(ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
 	}
 }

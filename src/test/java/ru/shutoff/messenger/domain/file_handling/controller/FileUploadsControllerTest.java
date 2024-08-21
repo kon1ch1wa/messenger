@@ -1,19 +1,19 @@
 package ru.shutoff.messenger.domain.file_handling.controller;
 
 import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.io.ByteArrayInputStream;
-import java.io.FileOutputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
@@ -22,6 +22,8 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpMethod;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
@@ -30,9 +32,12 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import lombok.extern.slf4j.Slf4j;
 import ru.shutoff.messenger.MessengerApplication;
 import ru.shutoff.messenger.domain.file_handling.configuration.TestConfiguration;
+import ru.shutoff.messenger.domain.file_handling.dto.FileResponse;
 import ru.shutoff.messenger.domain.file_handling.model.FileEntity;
 import ru.shutoff.messenger.domain.file_handling.repository.FileInfoRepository;
 import ru.shutoff.messenger.domain.file_handling.repository.MinioFileStorage;
@@ -92,18 +97,30 @@ public class FileUploadsControllerTest {
     @Test
     public void uploadFileTest() {
         doNothing().when(fileInfoRepository).save(any(FileEntity.class));
-
-        Path path = Path.of("TestFile_1.txt");
+        InputStream fileBody = new ByteArrayInputStream("This is test body".getBytes());
         try {
-            Files.createFile(path);
-            FileOutputStream fos = new FileOutputStream(path.toFile());
-            fos.write("This is test body".getBytes());
-            fos.close();
+            MockMultipartFile file = new MockMultipartFile("file", fileBody);
     
-            mockMvc.perform(post("/file")).andExpect(status().isOk());
-    
-            Files.delete(path);
-            assertFalse(Files.exists(path));
+            String content = mockMvc.perform(multipart(HttpMethod.POST, "/file").file(file))
+                    .andExpect(status().isOk())
+                    .andReturn()
+                    .getResponse()
+                    .getContentAsString();
+            FileResponse resp = new ObjectMapper().readValue(content, FileResponse.class);
+            assertNotNull(resp.fileId());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Test
+    public void uploadIncorrectFileTest() {
+        doNothing().when(fileInfoRepository).save(any(FileEntity.class));
+        try {
+            MockMultipartFile file = mock(MockMultipartFile.class);
+            when(file.getInputStream()).thenThrow(new IOException("Test exception"));
+            mockMvc.perform(multipart("/file").file(file))
+                    .andExpect(status().isBadRequest());
         } catch (Exception e) {
             e.printStackTrace();
         }

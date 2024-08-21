@@ -19,7 +19,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import ru.shutoff.messenger.domain.file_handling.dto.AbstractFile;
 import ru.shutoff.messenger.domain.file_handling.dto.FileResponse;
-import ru.shutoff.messenger.domain.file_handling.exception.EmptyFileUploadingException;
+import ru.shutoff.messenger.domain.file_handling.exception.InvalidFileDataException;
 import ru.shutoff.messenger.domain.file_handling.model.FileEntity;
 import ru.shutoff.messenger.domain.file_handling.service.FileService;
 
@@ -37,7 +37,7 @@ public class FilesUploadController {
             FileEntity file = fileService.uploadFile(fileName, in, fileSize);
             return new FileResponse(file.getFileId());
         } catch (IOException e) {
-            throw new EmptyFileUploadingException(e.getMessage());
+            throw new InvalidFileDataException(e.getMessage());
         }
     }
 
